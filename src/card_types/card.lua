@@ -189,4 +189,62 @@ function Card:getVisualData()
     }
 end
 
+-- Create a character card
+function Card.createCharacter(name, flavorText, essenceCost, hp, power, rarity)
+    return Card.new({
+        id = "custom_" .. name:gsub("%s+", "_"):lower(),
+        name = name,
+        type = "character",
+        essenceCost = essenceCost or 1,
+        hp = hp or 100,
+        power = power or 10,
+        rarity = rarity or "common",
+        flavorText = flavorText or "",
+        artVariant = "standard",
+        abilities = {},
+        fourthWallQuotes = {
+            {context = "play", text = "I'm ready to join the battle!"},
+            {context = "attack", text = "Take that!"},
+            {context = "fusion", text = "My power is growing!"}
+        }
+    })
+end
+
+-- Create an action card
+function Card.createAction(name, flavorText, essenceCost, effect, target, rarity)
+    return Card.new({
+        id = "custom_" .. name:gsub("%s+", "_"):lower(),
+        name = name,
+        type = "action",
+        essenceCost = essenceCost or 1,
+        rarity = rarity or "common",
+        flavorText = flavorText or "",
+        artVariant = "standard",
+        effect = effect or function() return true, "Action effect" end,
+        target = target or "any",
+        fourthWallQuotes = {
+            {context = "play", text = "Action activated!"}
+        }
+    })
+end
+
+-- Create an item card
+function Card.createItem(name, flavorText, essenceCost, effect, target, duration, rarity)
+    return Card.new({
+        id = "custom_" .. name:gsub("%s+", "_"):lower(),
+        name = name,
+        type = "item",
+        essenceCost = essenceCost or 1,
+        rarity = rarity or "common",
+        flavorText = flavorText or "",
+        artVariant = "standard",
+        effect = effect or function() return true, "Item effect" end,
+        target = target or "character",
+        duration = duration or "permanent",
+        fourthWallQuotes = {
+            {context = "play", text = "Item equipped!"}
+        }
+    })
+end
+
 return Card 

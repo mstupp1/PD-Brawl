@@ -58,14 +58,17 @@ function AIOpponent:planActions()
     
     -- First, check if we can play any character cards
     for i, card in ipairs(player.hand) do
-        if card.type == "character" and player.essence >= card.essenceCost then
-            table.insert(self.actions, function()
-                local success, message = self.game:playCard(2, i)
-                if success then
-                    -- Adjust indices for the removed card
-                    self:adjustActionIndices(i)
-                end
-            end)
+        if card.type == "character" then
+            local essenceCost = card.essenceCost or card.cost or 0
+            if player.essence >= essenceCost then
+                table.insert(self.actions, function()
+                    local success, message = self.game:playCard(2, i)
+                    if success then
+                        -- Adjust indices for the removed card
+                        self:adjustActionIndices(i)
+                    end
+                end)
+            end
         end
     end
     
@@ -78,9 +81,9 @@ function AIOpponent:planActions()
             
             if bestTarget then
                 table.insert(self.actions, function()
-                    player:attackCard(i, self.game.players[1], bestTarget)
-                    -- Check win condition
-                    self.game:checkWinCondition()
+                    -- Use game's attack method instead of player's
+                    local success, message = self.game:attackCard(2, i, 1, bestTarget)
+                    -- Check win condition handled by attackCard
                 end)
             end
         end
@@ -88,29 +91,24 @@ function AIOpponent:planActions()
     
     -- Finally, check if we can play any action/item cards
     for i, card in ipairs(player.hand) do
-        if (card.type == "action" or card.type == "item") and player.essence >= card.essenceCost then
-            -- Find appropriate target
-            local target = self:findBestActionTarget(card)
-            
-            if target then
-                table.insert(self.actions, function()
-                    -- Apply card effect to target
-                    local success
-                    if card.type == "action" then
-                        success = card.effect(card, self.game.players[target.playerIndex].field[target.cardIndex], self.game)
-                    else -- item
-                        success = card.effect(card, self.game.players[target.playerIndex].field[target.cardIndex], self.game)
-                    end
-                    
-                    if success then
-                        -- Remove card from hand
-                        player:removeCardFromHand(i)
-                        -- Use essence
-                        player:useEssence(card.essenceCost)
-                        -- Adjust indices
-                        self:adjustActionIndices(i)
-                    end
-                end)
+        if (card.type == "action" or card.type == "item") then
+            local essenceCost = card.essenceCost or card.cost or 0
+            if player.essence >= essenceCost then
+                -- Find appropriate target
+                local target = self:findBestActionTarget(card)
+                
+                if target then
+
+                    table.insert(self.actions, function()
+                        -- Simplified action/item handling
+                        local success, message = self.game:playCard(2, i, target)
+                        
+                        if success then
+                            -- Adjust indices already handled by playCard
+                            self:adjustActionIndices(i)
+                        end
+                    end)
+                end
             end
         end
     end
@@ -135,8 +133,9 @@ function AIOpponent:findBestAttackTarget()
     local lowestHP = math.huge
     
     for i, card in ipairs(opponents) do
-        if card.hp < lowestHP then
-            lowestHP = card.hp
+        local hp = card.hp or card.currentHP or 0
+        if hp < lowestHP then
+            lowestHP = hp
             bestIndex = i
         end
     end
@@ -146,26 +145,24 @@ end
 
 -- Find best target for action/item card
 function AIOpponent:findBestActionTarget(card)
-    -- Determine targeting based on card type and effect
-    if card.target == "character" then
-        -- For buffs, target own characters
-        if card.effect and card.type == "item" then
-            if #self.game.players[2].field > 0 then
-                return {
-                    playerIndex = 2,
-                    cardIndex = 1, -- Just target first character for simplicity
-                    zone = "field"
-                }
-            end
-        -- For attacks/debuffs, target opponent
-        else
-            if #self.game.players[1].field > 0 then
-                return {
-                    playerIndex = 1,
-                    cardIndex = 1, -- Just target first character for simplicity
-                    zone = "field"
-                }
-            end
+    -- Simplified targeting - just pick a card on either field
+    if card.type == "action" then
+        -- For actions, target opponent's field
+        if #self.game.players[1].field > 0 then
+            return {
+                playerIndex = 1,
+                cardIndex = 1,
+                zone = "field"
+            }
+        end
+    elseif card.type == "item" then
+        -- For items, target our own field
+        if #self.game.players[2].field > 0 then
+            return {
+                playerIndex = 2,
+                cardIndex = 1,
+                zone = "field"
+            }
         end
     end
     
@@ -190,7 +187,17 @@ function AIOpponent:getFourthWallMessage()
         "Is that a bug, or am I just playing poorly?",
         "01001000 01100101 01101100 01101100 01101111 00100001",
         "Loading optimal strategy... ERROR: File not found.",
-        "I can see all the cards in your hand. Just kidding, I can't."
+        "I can see all the cards in your hand. Just kidding, I can't.",
+        "Drag and drop those cards! I'm watching you...",
+        "The screen shake is for dramatic effect. I didn't really hit that hard.",
+        "Are you enjoying the new visual effects?",
+        "Try dragging your cards. It's much more satisfying!",
+        "Fusion looks so cool! Drag a character onto another for awesome effects!",
+        "Did you know you can fuse characters? Just drag one onto another!",
+        "No buttons needed! Just drag and drop to do everything.",
+        "I wish I could drag and drop my cards as smoothly as you can...",
+        "That fusion explosion effect is my favorite part!",
+        "Hmm, I wonder which characters would make the best fusion..."
     }
     return messages[math.random(#messages)]
 end

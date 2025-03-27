@@ -1,6 +1,4 @@
 -- Player module - handles player data and actions
-local CardDatabase = require("src.data.card_database")
-
 local Player = {}
 Player.__index = Player
 
@@ -10,6 +8,7 @@ function Player.new(playerIndex)
     
     self.playerIndex = playerIndex
     self.essence = 0
+    self.maxEssence = 10
     self.hand = {}
     self.field = {}
     self.deck = {}
@@ -17,27 +16,7 @@ function Player.new(playerIndex)
     self.graveyard = {}
     self.defeatedEnemyCount = 0
     
-    -- Initialize player deck
-    self:initializeDeck()
-    
     return self
-end
-
--- Initialize player deck with cards from database
-function Player:initializeDeck()
-    -- Load standard deck for player
-    local standardDeck = CardDatabase.getStandardDeck(self.playerIndex)
-    
-    for _, cardData in ipairs(standardDeck.mainDeck) do
-        table.insert(self.deck, CardDatabase.createCard(cardData))
-    end
-    
-    for _, cardData in ipairs(standardDeck.fusionDeck) do
-        table.insert(self.fusionDeck, CardDatabase.createCard(cardData))
-    end
-    
-    -- Shuffle deck
-    self:shuffleDeck()
 end
 
 -- Shuffle the player's deck
@@ -181,6 +160,23 @@ function Player:getStateInfo()
         graveyardCount = #self.graveyard,
         defeatedEnemyCount = self.defeatedEnemyCount
     }
+end
+
+-- Draw multiple cards
+function Player:drawCards(count)
+    local result = true
+    local message = "Drew " .. count .. " cards"
+    
+    for i = 1, count do
+        local success, cardMsg = self:drawCard()
+        if not success then
+            result = false
+            message = cardMsg
+            break
+        end
+    end
+    
+    return result, message
 end
 
 return Player 

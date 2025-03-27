@@ -3,9 +3,12 @@
 
 function love.conf(t)
     t.window.title = "PD Brawl - Public Domain Trading Card Game"
-    t.window.width = 800
-    t.window.height = 600
-    t.window.resizable = false
+    t.window.width = 1280
+    t.window.height = 720
+    t.window.fullscreen = true
+    t.window.fullscreentype = "desktop" -- Use desktop fullscreen mode for better compatibility
+    t.window.vsync = 1 -- Enable vertical sync
+    t.window.resizable = true -- Allow resizing in windowed mode
     
     t.version = "11.4" -- Minimum LÖVE version
     

@@ -1,0 +1,6 @@
+This file is a placeholder for the background image.
+
+The game's enhanced UI now includes a starfield background effect generated in code,
+but you can replace it with a custom image by creating background.png in this directory.
+
+Recommended size: 1920x1080 or larger 

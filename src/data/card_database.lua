@@ -2,6 +2,13 @@
 local Card = require("src.card_types.card")
 
 local CardDatabase = {}
+CardDatabase.__index = CardDatabase
+
+-- Create a new CardDatabase instance
+function CardDatabase.new()
+    local self = setmetatable({}, CardDatabase)
+    return self
+end
 
 -- Card data for all available cards
 local cardData = {
@@ -334,12 +341,12 @@ local cardData = {
 }
 
 -- Create a card from data
-function CardDatabase.createCard(data)
+function CardDatabase:createCard(data)
     return Card.new(data)
 end
 
 -- Get a standard starter deck
-function CardDatabase.getStandardDeck(playerIndex)
+function CardDatabase:getStandardDeck(playerIndex)
     -- For demo purposes, create preset decks
     -- In a full game, this would let players build custom decks
     local decks = {
@@ -408,12 +415,12 @@ function CardDatabase.getStandardDeck(playerIndex)
 end
 
 -- Get a card by ID
-function CardDatabase.getCardById(id)
+function CardDatabase:getCardById(id)
     -- Search through all card types
     for _, category in pairs(cardData) do
         for _, card in ipairs(category) do
             if card.id == id then
-                return CardDatabase.createCard(card)
+                return self:createCard(card)
             end
         end
     end
@@ -422,7 +429,7 @@ function CardDatabase.getCardById(id)
 end
 
 -- Get fusion result for combination
-function CardDatabase.getFusionResult(baseCardId, materialIds)
+function CardDatabase:getFusionResult(baseCardId, materialIds)
     for _, fusion in ipairs(cardData.fusionResults) do
         if fusion.baseCard == baseCardId then
             -- Check if materials match
@@ -442,9 +449,9 @@ function CardDatabase.getFusionResult(baseCardId, materialIds)
             if materialMatches then
                 -- Return fusion result
                 if type(fusion.result) == "string" then
-                    return CardDatabase.getCardById(fusion.result)
+                    return self:getCardById(fusion.result)
                 else
-                    return CardDatabase.createCard(fusion.result)
+                    return self:createCard(fusion.result)
                 end
             end
         end
@@ -454,7 +461,7 @@ function CardDatabase.getFusionResult(baseCardId, materialIds)
 end
 
 -- Get all cards
-function CardDatabase.getAllCards()
+function CardDatabase:getAllCards()
     local allCards = {}
     
     for _, category in pairs(cardData) do

@@ -1,6 +1,96 @@
 # PD Brawl - Public Domain Trading Card Game
 
-A digital Trading Card Game (TCG) built with LÖVE2D that features public domain characters in a humorous, fourth-wall-breaking setting.
+A digital card game featuring public domain characters in an epic battle of wits and strategy!
+
+## About the Game
+
+PD Brawl is a trading card game where players use Essence to play character cards from public domain works, along with action and item cards. Characters can attack opponents and even be fused together to create more powerful cards!
+
+## How to Play
+
+1. **Characters**: Play character cards from your hand by spending Essence
+2. **Actions & Items**: Support your characters with action and item cards
+3. **Attack**: Use your characters to attack the opponent's characters or the opponent directly
+4. **Fusion**: Combine character cards to create more powerful fusion characters
+5. **Win Condition**: Reduce your opponent's characters' HP to zero
+
+## Running the Game
+
+### macOS Instructions
+
+1. **Install LÖVE**:
+   - Download and install LÖVE from [love2d.org](https://love2d.org)
+   - Move the LÖVE.app to your Applications folder
+
+2. **Command Line Setup** (one-time setup):
+   ```
+   sudo ln -s /Applications/love.app/Contents/MacOS/love /usr/local/bin/love
+   ```
+
+3. **Running the Game**:
+   - Open Terminal
+   - Navigate to the PD-Brawl directory
+   - Run the game: `love .`
+
+4. **Alternative Methods**:
+   - Package the game: `./package.sh`
+   - Run the packaged version: `love build/pd-brawl.love`
+   - Or drag the `pd-brawl.love` file onto the LÖVE.app icon
+
+### Windows Instructions
+
+1. **Install LÖVE**:
+   - Download and install LÖVE from [love2d.org](https://love2d.org)
+   - Make sure LÖVE is added to your PATH during installation
+
+2. **Running the Game**:
+   - Open Command Prompt
+   - Navigate to the PD-Brawl directory
+   - Run the game: `love .`
+
+3. **Alternative Methods**:
+   - Create a shortcut that points to: `"C:\Program Files\LOVE\love.exe" "C:\path\to\PD-Brawl"`
+   - Or drag the entire PD-Brawl folder onto love.exe
+
+## Game Controls
+
+- **Mouse**: Click and drag cards to interact with them
+- **Drag and Drop**:
+  - Drag cards from hand to field to play them
+  - Drag cards from field to opponent's cards to attack
+  - Drag character cards from hand onto your field characters to fuse them
+- **ESC**: Quit the game
+- **F**: Toggle fullscreen
+- **V**: Toggle VSync (can improve performance)
+- **End Turn Button**: Click to end your turn
+
+## Game Features
+
+- **Dynamic UI**: Fullscreen gameplay with adaptive layout
+- **AI Opponent**: Challenge a computer opponent with strategic gameplay
+- **Beautiful Graphics**: Starfield background, card gradients, and visual effects
+- **Interactive Gameplay**: Intuitive drag and drop controls for all card actions
+- **Visual Feedback**: 
+  - Cards glow when selected or dragged
+  - Screen shakes during attacks
+  - Spectacular fusion effects with particles and explosions
+  - Color highlights guide valid drag targets
+- **Fourth Wall Breaking**: Characters occasionally break the fourth wall with humorous messages
+- **Fusion System**: Combine characters by dragging one onto another to create more powerful versions
+
+## Characters
+
+The game features public domain characters such as:
+- Steamboat Willie (Mickey Mouse)
+- Sherlock Holmes
+- Dracula
+- Popeye
+- and more!
+
+## Requirements
+
+- LÖVE 11.4 or higher
+- Minimum resolution: 1280x720
 
 ## Game Concept
 
@@ -28,40 +118,6 @@ PD Brawl blends mechanics from popular TCGs like Pokémon TCG Pocket (simple HP 
    - Characters: Main attackers with HP and Power
    - Actions: One-time effect cards
    - Items: Attach to characters for ongoing effects
-
-## How to Play
-
-1. **Setup**
-   - Each player starts with a deck of 20 cards
-   - Draw 5 cards initially
-
-2. **Turn Structure**
-   - Gain 1 Essence at start of turn
-   - Play cards from hand (Character, Action, Item)
-   - Attack opponent's characters
-   - Fuse characters (if conditions met)
-   - End turn
-
-3. **Victory Conditions**
-   - Defeat 3 of your opponent's characters to win
-
-## Controls
-
-- **Mouse**: Click cards to select, click targets to attack or apply effects
-- **Space**: End turn
-- **F**: Activate fusion (when a field card is selected)
-
-## Technical Requirements
-
-- [LÖVE2D](https://love2d.org/) 11.4 or higher
-
-## Running the Game
-
-1. Install LÖVE2D from [love2d.org](https://love2d.org/)
-2. Download this repository
-3. Run using one of these methods:
-   - Drag the folder onto the LÖVE2D shortcut
-   - Use command line: `love path/to/PD-Brawl`
 
 ## Project Structure
 
