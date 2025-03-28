@@ -376,6 +376,11 @@ function UI:draw()
     love.graphics.rectangle("fill", 0, love.graphics.getHeight() - 200, love.graphics.getWidth(), 200)
     love.graphics.rectangle("fill", 0, 0, love.graphics.getWidth(), 200)
     
+    -- Draw mid-field divider (nicer styling)
+    love.graphics.setColor(0.3, 0.3, 0.5, 0.3)
+    love.graphics.setLineWidth(3)
+    love.graphics.line(0, love.graphics.getHeight() / 2, love.graphics.getWidth(), love.graphics.getHeight() / 2)
+    
     -- Draw player stats
     self:drawPlayerStats(1) -- Player
     self:drawPlayerStats(2) -- AI opponent
@@ -407,6 +412,15 @@ function UI:draw()
     -- Draw fourth wall message (if any)
     self:drawFourthWallMessage()
     
+    -- Draw game help and tips
+    self:drawGameHelpPanel()
+    
+    -- Draw turn counter and essence reminder
+    self:drawTurnCounter()
+    
+    -- Draw win condition reminder
+    self:drawWinConditionReminder()
+    
     -- Draw animations
     self:drawAnimations()
     
@@ -417,6 +431,97 @@ function UI:draw()
     
     -- Draw inspect mode if active (should be on top of everything)
     self:drawInspectMode()
+end
+
+-- Draw game help panel with controls and tips
+function UI:drawGameHelpPanel()
+    -- Only show help panel in first few turns
+    if self.game.currentTurn <= 3 then
+        local helpX = 10
+        local helpY = love.graphics.getHeight() / 2 - 75
+        local helpWidth = 200
+        local helpHeight = 150
+        
+        -- Draw background panel
+        love.graphics.setColor(0.1, 0.1, 0.2, 0.8)
+        love.graphics.rectangle("fill", helpX, helpY, helpWidth, helpHeight, 10, 10)
+        
+        -- Draw border
+        love.graphics.setColor(0.3, 0.5, 0.8, 0.7)
+        love.graphics.setLineWidth(2)
+        love.graphics.rectangle("line", helpX, helpY, helpWidth, helpHeight, 10, 10)
+        
+        -- Draw header
+        love.graphics.setColor(1, 1, 1, 0.9)
+        love.graphics.setFont(self.fonts.medium)
+        love.graphics.print("Game Controls", helpX + 10, helpY + 10)
+        
+        -- Draw tips
+        love.graphics.setColor(0.9, 0.9, 0.9, 0.8)
+        love.graphics.setFont(self.fonts.small)
+        
+        local tips = {
+            "• Drag cards to play them",
+            "• Drag character to field",
+            "• Drag character onto opponent to attack",
+            "• Drag character onto character to fuse",
+            "• Items can be attached to characters",
+            "• Press 'F' to toggle fullscreen",
+            "• Defeat 3 enemy cards to win"
+        }
+        
+        for i, tip in ipairs(tips) do
+            love.graphics.print(tip, helpX + 15, helpY + 35 + (i - 1) * 15)
+        end
+    end
+end
+
+-- Draw turn counter
+function UI:drawTurnCounter()
+    local turn = self.game.currentTurn
+    local turnX = love.graphics.getWidth() - 100
+    local turnY = love.graphics.getHeight() / 2 - 15
+    
+    -- Draw turn counter background
+    love.graphics.setColor(0.1, 0.1, 0.2, 0.7)
+    love.graphics.rectangle("fill", turnX - 10, turnY - 5, 90, 30, 5, 5)
+    
+    -- Draw turn text
+    love.graphics.setColor(0.9, 0.9, 1)
+    love.graphics.setFont(self.fonts.medium)
+    love.graphics.print("Turn: " .. turn, turnX, turnY)
+end
+
+-- Draw win condition reminder
+function UI:drawWinConditionReminder()
+    -- Place near the center
+    local x = love.graphics.getWidth() - 220
+    local y = love.graphics.getHeight() / 2 + 20
+    
+    -- Draw reminder  if it's the player's turn
+    if self.game.currentPlayer == 1 then
+        -- Draw win progress for player
+        local defeatedCount = self.game.players[1].defeatedEnemyCount or 0
+        local neededToWin = 3
+        
+        -- Draw progress background
+        love.graphics.setColor(0.1, 0.1, 0.2, 0.7)
+        love.graphics.rectangle("fill", x - 10, y - 5, 210, 30, 5, 5)
+        
+        -- Draw progress text
+        love.graphics.setColor(0.9, 0.9, 1, 0.9)
+        love.graphics.setFont(self.fonts.small)
+        love.graphics.print("Win progress: " .. defeatedCount .. "/" .. neededToWin .. " opponents", x, y)
+        
+        -- Draw progress bar
+        love.graphics.setColor(0.2, 0.2, 0.3, 0.8)
+        love.graphics.rectangle("fill", x, y + 20, 190, 10, 3, 3)
+        
+        -- Draw filled progress
+        local fillWidth = (defeatedCount / neededToWin) * 190
+        love.graphics.setColor(0.3, 0.6, 0.9, 0.8)
+        love.graphics.rectangle("fill", x, y + 20, fillWidth, 10, 3, 3)
+    end
 end
 
 -- Draw background starfield
@@ -583,9 +688,9 @@ function UI:drawEnhancedCard(card, x, y, highlighted)
         y = y - 5
     end
     
-    -- Draw card shadow
-    love.graphics.setColor(0, 0, 0, 0.5)
-    self:drawRoundedRectangle(x + 5, y + 5, cardWidth, cardHeight, CARD_CORNER_RADIUS)
+    -- Draw card shadow with perspective
+    love.graphics.setColor(0, 0, 0, 0.4)
+    self:drawRoundedRectangle(x + 5, y + 7, cardWidth, cardHeight - 2, CARD_CORNER_RADIUS)
     
     -- Get card background color based on type
     local bgColor = {0.9, 0.9, 0.9}
@@ -598,6 +703,19 @@ function UI:drawEnhancedCard(card, x, y, highlighted)
         bgColor = {0.7, 0.9, 0.7}  -- Green for item
     end
     
+    -- Apply rarity color modifiers
+    if card.rarity == "rare" then
+        -- Add a slight gold tint for rare cards
+        bgColor[1] = math.min(1, bgColor[1] * 1.1)
+        bgColor[2] = math.min(1, bgColor[2] * 1.05)
+        bgColor[3] = math.max(0, bgColor[3] * 0.9)
+    elseif card.rarity == "legendary" then
+        -- Add a purple tint for legendary cards
+        bgColor[1] = math.min(1, bgColor[1] * 1.05)
+        bgColor[2] = math.max(0, bgColor[2] * 0.8)
+        bgColor[3] = math.min(1, bgColor[3] * 1.1)
+    end
+    
     -- Brighten background color if highlighted
     if highlighted then
         bgColor[1] = math.min(1, bgColor[1] * 1.2)
@@ -605,67 +723,214 @@ function UI:drawEnhancedCard(card, x, y, highlighted)
         bgColor[3] = math.min(1, bgColor[3] * 1.2)
     end
     
-    -- Draw card background
+    -- Draw card background with gradient
+    for i = 0, cardHeight do
+        local t = i / cardHeight
+        local r = bgColor[1] * (1 - t * 0.2)
+        local g = bgColor[2] * (1 - t * 0.2)
+        local b = bgColor[3] * (1 - t * 0.2)
+        
+        love.graphics.setColor(r, g, b)
+        love.graphics.rectangle("fill", x, y + i, cardWidth, 1)
+    end
+    
+    -- Add rounded corners
     love.graphics.setColor(bgColor)
     self:drawRoundedRectangle(x, y, cardWidth, cardHeight, CARD_CORNER_RADIUS)
     
-    -- Draw card border
-    local borderColor = highlighted and {0.9, 0.8, 0.3} or {0.3, 0.3, 0.3}
+    -- Draw card border based on rarity
+    local borderColor = {0.3, 0.3, 0.3} -- default
+    
+    if card.rarity == "uncommon" then
+        borderColor = {0.2, 0.8, 0.2} -- green
+    elseif card.rarity == "rare" then
+        borderColor = {0.9, 0.8, 0.2} -- gold
+    elseif card.rarity == "legendary" then
+        borderColor = {0.8, 0.3, 0.9} -- purple
+    end
+    
+    -- Brighten border if highlighted
+    if highlighted then
+        borderColor[1] = math.min(1, borderColor[1] * 1.3)
+        borderColor[2] = math.min(1, borderColor[2] * 1.3) 
+        borderColor[3] = math.min(1, borderColor[3] * 1.3)
+    end
+    
+    -- Draw glowing border for legendary cards
+    if card.rarity == "legendary" then
+        for i = 3, 1, -1 do
+            love.graphics.setColor(borderColor[1], borderColor[2], borderColor[3], 0.3 - (i * 0.05))
+            love.graphics.setLineWidth(2 + i)
+            self:drawRoundedRectangle(x, y, cardWidth, cardHeight, CARD_CORNER_RADIUS, true)
+        end
+    end
+    
     love.graphics.setColor(borderColor)
     love.graphics.setLineWidth(2)
     self:drawRoundedRectangle(x, y, cardWidth, cardHeight, CARD_CORNER_RADIUS, true)
     
-    -- Draw card name
-    love.graphics.setColor(0, 0, 0)
+    -- Draw card title background (dark gradient bar)
+    love.graphics.setColor(0.1, 0.1, 0.15, 0.8)
+    love.graphics.rectangle("fill", x, y, cardWidth, 26, CARD_CORNER_RADIUS, CARD_CORNER_RADIUS)
+    
+    -- Draw name with shadow for better readability
+    love.graphics.setColor(0, 0, 0, 0.7)
     love.graphics.setFont(self.fonts.small)
-    local nameWidth = cardWidth - 20
-    love.graphics.printf(card.name, x + 10, y + 10, nameWidth, "center")
+    local nameWidth = cardWidth - 30
+    love.graphics.printf(card.name, x + 11, y + 7, nameWidth, "center")
     
-    -- Draw card type
+    love.graphics.setColor(1, 1, 1)
+    love.graphics.printf(card.name, x + 10, y + 6, nameWidth, "center")
+    
+    -- Draw card type with icon
+    local typeIcons = {
+        character = "♟",
+        action = "⚡",
+        item = "🧰"
+    }
+    
     love.graphics.setFont(self.fonts.tiny)
-    love.graphics.printf(card.type:gsub("^%l", string.upper), x + 10, y + 30, nameWidth, "center")
+    love.graphics.setColor(0.8, 0.8, 0.8)
+    local typeText = (typeIcons[card.type] or "") .. " " .. card.type:gsub("^%l", string.upper)
+    love.graphics.printf(typeText, x + 10, y + 30, nameWidth, "center")
     
-    -- Draw essence cost
-    if card.essence then
-        love.graphics.setFont(self.fonts.medium)
-        love.graphics.print(card.essence, x + cardWidth - 25, y + 8)
+    -- Draw essence cost with nice styling
+    if card.essenceCost then
+        -- Draw essence circle with glow effect
+        love.graphics.setColor(0.9, 0.7, 0.2, 0.3)
+        love.graphics.circle("fill", x + cardWidth - 15, y + 15, 15)
         
-        -- Draw essence circle
         love.graphics.setColor(0.9, 0.7, 0.2)
         love.graphics.circle("fill", x + cardWidth - 15, y + 15, 12)
-        love.graphics.setColor(0, 0, 0)
+        
+        love.graphics.setColor(0.1, 0.1, 0.1)
         love.graphics.circle("line", x + cardWidth - 15, y + 15, 12)
+        
+        -- Draw essence cost value
+        love.graphics.setFont(self.fonts.medium)
+        love.graphics.setColor(0, 0, 0)
+        love.graphics.print(card.essenceCost, x + cardWidth - 25, y + 8)
+        
+        -- Draw essence cost value with shadow
+        love.graphics.setColor(1, 1, 1)
+        love.graphics.print(card.essenceCost, x + cardWidth - 26, y + 7)
+    elseif card.essence then
+        -- For backward compatibility with cards using essence property
+        -- Draw essence circle with glow effect
+        love.graphics.setColor(0.9, 0.7, 0.2, 0.3)
+        love.graphics.circle("fill", x + cardWidth - 15, y + 15, 15)
+        
+        love.graphics.setColor(0.9, 0.7, 0.2)
+        love.graphics.circle("fill", x + cardWidth - 15, y + 15, 12)
+        
+        love.graphics.setColor(0.1, 0.1, 0.1)
+        love.graphics.circle("line", x + cardWidth - 15, y + 15, 12)
+        
+        -- Draw essence cost value
+        love.graphics.setFont(self.fonts.medium)
+        love.graphics.setColor(0, 0, 0)
+        love.graphics.print(card.essence, x + cardWidth - 25, y + 8)
+        
+        -- Draw essence cost value with shadow
+        love.graphics.setColor(1, 1, 1)
+        love.graphics.print(card.essence, x + cardWidth - 26, y + 7)
     end
     
-    -- Draw card image placeholder
+    -- Draw character portrait area with border
+    love.graphics.setColor(0.2, 0.2, 0.2, 0.3)
+    love.graphics.rectangle("fill", x + 9, y + 44, cardWidth - 18, 52)
+    
     love.graphics.setColor(0.85, 0.85, 0.85)
     love.graphics.rectangle("fill", x + 10, y + 45, cardWidth - 20, 50)
+    
+    -- Draw art variant indicator
+    if card.artVariant then
+        local artLabels = {
+            standard = "",
+            vintage = "VINTAGE",
+            fusion = "FUSION",
+            parody = "PARODY",
+            classic = "CLASSIC"
+        }
+        
+        if artLabels[card.artVariant] and artLabels[card.artVariant] ~= "" then
+            love.graphics.setColor(0, 0, 0, 0.7)
+            love.graphics.rectangle("fill", x + 10, y + 45, cardWidth - 20, 15)
+            love.graphics.setColor(1, 1, 1)
+            love.graphics.setFont(self.fonts.tiny)
+            love.graphics.printf(artLabels[card.artVariant], x + 10, y + 47, cardWidth - 20, "center")
+        end
+        
+        -- Draw placeholder portrait based on art variant
+        love.graphics.setColor(0.3, 0.3, 0.3, 0.3)
+        if card.artVariant == "vintage" then
+            -- Draw old film style dots
+            for i = 0, 4 do
+                for j = 0, 6 do
+                    love.graphics.circle("fill", x + 18 + i * 20, y + 55 + j * 6, 1)
+                end
+            end
+        elseif card.artVariant == "fusion" then
+            -- Draw fusion energy pattern
+            for i = 1, 5 do
+                love.graphics.setColor(0.6, 0.2, 0.8, 0.2)
+                local pulseSize = 3 + math.sin(love.timer.getTime() * 2 + i) * 2
+                love.graphics.circle("fill", 
+                    x + cardWidth/2, 
+                    y + 70, 
+                    25 + pulseSize
+                )
+            end
+        elseif card.artVariant == "parody" then
+            -- Draw comic style lines
+            love.graphics.setColor(0.3, 0.3, 0.3, 0.3)
+            for i = 1, 7 do
+                love.graphics.line(
+                    x + 10, y + 50 + i * 7,
+                    x + cardWidth - 20, y + 50 + i * 7
+                )
+            end
+        end
+    end
     
     -- Draw card stats for character cards
     if card.type == "character" then
         self:drawCardStats(card, x, y)
     end
     
-    -- Draw card text
+    -- Draw abilities
     love.graphics.setColor(0, 0, 0)
     love.graphics.setFont(self.fonts.tiny)
     
-    -- Ability text area
+    -- Display actual abilities if present
     local textY = y + 105
-    if card.ability then
+    if card.abilities and #card.abilities > 0 then
+        love.graphics.setColor(0.2, 0.2, 0.2)
+        local abilitiesText = "Abilities: " .. table.concat(card.abilities, ", ")
+        local wrappedText = self:wrapText(abilitiesText, cardWidth - 20, self.fonts.tiny)
+        love.graphics.printf(wrappedText, x + 10, textY, cardWidth - 20, "left")
+    elseif card.ability then
+        -- Fallback to old ability text
         local wrappedText = self:wrapText(card.ability, cardWidth - 20, self.fonts.tiny)
         love.graphics.printf(wrappedText, x + 10, textY, cardWidth - 20, "left")
     end
     
-    -- Draw flavor text at the bottom
+    -- Draw flavor text at the bottom with quotation marks and styling
     if card.flavorText then
-        love.graphics.setColor(0.4, 0.4, 0.4)
-        local flavorY = y + cardHeight - 30
-        local flavorText = self:wrapText(card.flavorText, cardWidth - 20, self.fonts.tiny)
-        love.graphics.printf(flavorText, x + 10, flavorY, cardWidth - 20, "center")
+        love.graphics.setColor(0.1, 0.1, 0.1, 0.5)
+        local flavorY = y + cardHeight - 32
+        
+        -- Draw background for flavor text
+        local flavorHeight = 25
+        love.graphics.rectangle("fill", x + 5, flavorY - 2, cardWidth - 10, flavorHeight, 3, 3)
+        
+        love.graphics.setColor(0.8, 0.8, 0.8)
+        local flavorText = '"' .. card.flavorText .. '"'
+        local wrappedFlavorText = self:wrapText(flavorText, cardWidth - 20, self.fonts.tiny)
+        love.graphics.printf(wrappedFlavorText, x + 10, flavorY, cardWidth - 20, "center")
     end
     
-    -- If card has an attack indicator (for character cards)
+    -- If card has an attack indicator (for character cards that have already attacked)
     if card.type == "character" and card.hasAttacked then
         -- Draw attack used indicator
         love.graphics.setColor(0.7, 0.2, 0.2, 0.7)
@@ -674,39 +939,102 @@ function UI:drawEnhancedCard(card, x, y, highlighted)
         love.graphics.setFont(self.fonts.tiny)
         love.graphics.print("✗", x + 17, y + 14)
     end
+    
+    -- Draw rarity indicator with stars
+    local rarityIcons = {
+        common = "",
+        uncommon = "★",
+        rare = "★★",
+        legendary = "★★★"
+    }
+    
+    if card.rarity and rarityIcons[card.rarity] and rarityIcons[card.rarity] ~= "" then
+        love.graphics.setColor(1, 0.9, 0.2)
+        love.graphics.setFont(self.fonts.tiny)
+        love.graphics.print(rarityIcons[card.rarity], x + 8, y + 8)
+    end
+    
+    -- Reset color
+    love.graphics.setColor(1, 1, 1)
 end
 
 -- Draw card stats (HP bar and attack value)
 function UI:drawCardStats(card, x, y)
-    -- Draw HP bar background
-    love.graphics.setColor(0.3, 0.3, 0.3, 0.8)
+    -- Draw HP bar background with gradient border
+    love.graphics.setColor(0.1, 0.1, 0.1, 0.8)
     local barY = y + 155
+    love.graphics.rectangle("fill", x + 9, barY - 1, CARD_WIDTH - 18, 12, 4, 4)
+    
+    love.graphics.setColor(0.3, 0.3, 0.3, 0.8)
     love.graphics.rectangle("fill", x + 10, barY, CARD_WIDTH - 20, 10, 3, 3)
     
     -- Draw HP bar fill
     local hpPercent = card.hp / card.maxHp
     hpPercent = math.max(0, math.min(1, hpPercent))
     
-    -- Color based on HP percentage
+    -- Color based on HP percentage with gradient
     local healthColor = {0.2, 0.8, 0.2} -- Green
+    local healthColorEnd = {0.3, 0.9, 0.3} -- Lighter green
+    
     if hpPercent < 0.3 then
         healthColor = {0.8, 0.2, 0.2} -- Red
+        healthColorEnd = {1.0, 0.3, 0.3} -- Lighter red
     elseif hpPercent < 0.6 then
         healthColor = {0.8, 0.7, 0.2} -- Yellow
+        healthColorEnd = {1.0, 0.9, 0.3} -- Lighter yellow
     end
     
-    love.graphics.setColor(healthColor)
-    love.graphics.rectangle("fill", x + 10, barY, (CARD_WIDTH - 20) * hpPercent, 10, 3, 3)
+    -- Draw gradient HP bar
+    local barWidth = (CARD_WIDTH - 20) * hpPercent
+    for i = 0, barWidth do
+        local t = i / barWidth
+        local r = healthColor[1] * (1-t) + healthColorEnd[1] * t
+        local g = healthColor[2] * (1-t) + healthColorEnd[2] * t
+        local b = healthColor[3] * (1-t) + healthColorEnd[3] * t
+        
+        love.graphics.setColor(r, g, b)
+        love.graphics.rectangle("fill", x + 10 + i, barY, 1, 10)
+    end
     
-    -- Draw HP text
-    love.graphics.setColor(0, 0, 0)
-    love.graphics.setFont(self.fonts.tiny)
+    -- Add pulsing effect for low health
+    if hpPercent < 0.25 then
+        local pulseAlpha = 0.3 + 0.2 * math.sin(love.timer.getTime() * 5)
+        love.graphics.setColor(0.9, 0.2, 0.2, pulseAlpha)
+        love.graphics.rectangle("fill", x + 10, barY, barWidth, 10, 3, 3)
+    end
+    
+    -- Draw HP text with background for better readability
     local hpText = math.floor(card.hp) .. "/" .. card.maxHp
+    local hpTextWidth = self.fonts.tiny:getWidth("HP: " .. hpText)
+    
+    -- Draw text background
+    love.graphics.setColor(0, 0, 0, 0.5)
+    love.graphics.rectangle("fill", x + 15 - 2, barY - 15 - 2, hpTextWidth + 4, 14, 3, 3)
+    
+    love.graphics.setColor(1, 1, 1)
+    love.graphics.setFont(self.fonts.tiny)
     love.graphics.print("HP: " .. hpText, x + 15, barY - 15)
     
-    -- Draw attack power
-    love.graphics.setColor(0.1, 0.1, 0.1)
-    love.graphics.print("⚔️" .. card.power, x + CARD_WIDTH - 38, barY - 15)
+    -- Draw attack power with icon and background
+    local powerText = tostring(card.power)
+    local powerTextWidth = self.fonts.tiny:getWidth("⚔️" .. powerText)
+    
+    -- Draw power text background
+    love.graphics.setColor(0, 0, 0, 0.5)
+    love.graphics.rectangle("fill", x + CARD_WIDTH - 38 - 2, barY - 15 - 2, powerTextWidth + 4, 14, 3, 3)
+    
+    -- Draw attack icon with animation for powerful characters
+    if card.power >= 30 then
+        local shineAlpha = 0.4 + 0.2 * math.sin(love.timer.getTime() * 3)
+        love.graphics.setColor(1, 0.8, 0.2, shineAlpha)
+        love.graphics.circle("fill", x + CARD_WIDTH - 30, barY - 8, 10)
+    end
+    
+    love.graphics.setColor(1, 0.8, 0.2)
+    love.graphics.print("⚔️", x + CARD_WIDTH - 38, barY - 15)
+    
+    love.graphics.setColor(1, 1, 1)
+    love.graphics.print(powerText, x + CARD_WIDTH - 25, barY - 15)
 end
 
 -- Draw card with gradient background
@@ -1528,7 +1856,7 @@ function UI:updateDragAndDropState()
     -- Check for valid drop targets
     if self.dragging.sourceType == "hand" then
         local card = self.dragging.card
-        local essenceCost = card.essenceCost or card.cost or 0
+        local essenceCost = card.essenceCost or card.essence or card.cost or 0
         
         -- First check if the card is being dragged onto another card for fusion
         local targetFieldIndex = self:getClickedFieldCardIndex(mouseX, mouseY, 1)
@@ -1541,22 +1869,103 @@ function UI:updateDragAndDropState()
                     type = "fusion",
                     cardIndex = targetFieldIndex
                 }
-                self.instructionMessage = "Release to fuse cards"
+                
+                -- Check for specific fusion combinations to show better messages
+                local specialCombos = {
+                    ["Sailor Popeye"] = {
+                        ["Can of Spinach"] = "Spinach-Power Fusion! Release to create Spinach-Powered Popeye"
+                    },
+                    ["Sherlock Holmes"] = {
+                        ["Deerstalker Hat"] = "Elementary Fusion! Release to enhance Sherlock Holmes"
+                    }
+                }
+                
+                if specialCombos[fieldCard.name] and specialCombos[fieldCard.name][card.name] then
+                    self.instructionMessage = specialCombos[fieldCard.name][card.name]
+                else
+                    self.instructionMessage = "Release to fuse cards: " .. fieldCard.name .. " + " .. card.name
+                end
+                
+                -- Add particle effect to indicate fusion possibility 
+                self:addFusionParticles(
+                    self.player1FieldPositions[targetFieldIndex].x + CARD_WIDTH/2,
+                    self.player1FieldPositions[targetFieldIndex].y + CARD_HEIGHT/2,
+                    mouseX,
+                    mouseY
+                )
+                
                 return
             end
         end
         
-        -- If not fusion, check if card can be played to field
+        -- Special case for item cards
+        if card.type == "item" and targetFieldIndex and self.game.players[1].essence >= essenceCost then
+            local fieldCard = self.game.players[1].field[targetFieldIndex]
+            if fieldCard and fieldCard.type == "character" then
+                -- This is a valid item target
+                self.dragging.validDropTarget = {
+                    type = "attachment",
+                    cardIndex = targetFieldIndex
+                }
+                self.instructionMessage = "Release to attach " .. card.name .. " to " .. fieldCard.name
+                return
+            end
+        end
+        
+        -- Special case for action cards
+        if card.type == "action" and self.game.players[1].essence >= essenceCost then
+            -- Action cards can target either player's field
+            local p1TargetIndex = self:getClickedFieldCardIndex(mouseX, mouseY, 1)
+            local p2TargetIndex = self:getClickedFieldCardIndex(mouseX, mouseY, 2)
+            
+            if p1TargetIndex then
+                self.dragging.validDropTarget = {
+                    type = "action",
+                    playerIndex = 1,
+                    cardIndex = p1TargetIndex
+                }
+                self.instructionMessage = "Release to use " .. card.name .. " on your card"
+                return
+            elseif p2TargetIndex then
+                self.dragging.validDropTarget = {
+                    type = "action",
+                    playerIndex = 2,
+                    cardIndex = p2TargetIndex
+                }
+                self.instructionMessage = "Release to use " .. card.name .. " on opponent's card"
+                return
+            end
+        end
+        
+        -- If not fusion or item/action, check if card can be played to field
         if self.game.players[1].essence >= essenceCost then
             -- Check if mouse is over the player's field area
             if mouseY > FIELD_Y_OFFSET + 50 and mouseY < FIELD_Y_OFFSET + 200 then
-                self.dragging.validDropTarget = "field"
-                self.instructionMessage = "Release to play card"
+                -- Check for available field space (max 5 cards)
+                if #self.game.players[1].field < 5 then
+                    self.dragging.validDropTarget = "field"
+                    
+                    if card.type == "character" then
+                        self.instructionMessage = "Release to play " .. card.name .. " to the field"
+                    else
+                        self.instructionMessage = "Release to play " .. card.name
+                    end
+                    
+                    -- Add visual effect to show field placement
+                    love.graphics.setColor(0.3, 0.9, 0.3, 0.5 + 0.2 * math.sin(love.timer.getTime() * 5))
+                    love.graphics.circle("fill", mouseX, mouseY, 10)
+                else
+                    self.instructionMessage = "Field is full (max 5 cards)"
+                end
             else
-                self.instructionMessage = "Drag to your field to play"
+                if card.type == "character" then
+                    self.instructionMessage = "Drag to your field to play character"
+                else
+                    self.instructionMessage = "Drag to a valid target"
+                end
             end
         else
-            self.instructionMessage = "Not enough essence to play this card"
+            self.instructionMessage = "Need " .. essenceCost .. " essence to play (you have " .. self.game.players[1].essence .. ")"
         end
     elseif self.dragging.sourceType == "field" then
         -- For cards on field, valid targets are opponent's cards
@@ -1567,18 +1976,96 @@ function UI:updateDragAndDropState()
             -- Check if mouse is over an opponent's card
             local targetIndex = self:getClickedFieldCardIndex(mouseX, mouseY, 2)
             if targetIndex then
-                self.dragging.validDropTarget = {
-                    type = "attack",
-                    playerIndex = 2,
-                    cardIndex = targetIndex
-                }
-                self.instructionMessage = "Release to attack this card"
+                local targetCard = self.game.players[2].field[targetIndex]
+                if targetCard then
+                    self.dragging.validDropTarget = {
+                        type = "attack",
+                        playerIndex = 2,
+                        cardIndex = targetIndex
+                    }
+                    
+                    -- Show target's stats in the message for better feedback
+                    self.instructionMessage = "Attack " .. targetCard.name .. " (" .. 
+                        targetCard.hp .. " HP, " .. targetCard.power .. " ATK) with " .. 
+                        card.name .. " (" .. card.power .. " ATK)"
+                    
+                    -- Add attack line with animation
+                    love.graphics.setColor(1, 0.3, 0.2, 0.7)
+                    love.graphics.setLineWidth(3)
+                    
+                    -- Draw zigzag attack line for visual flair
+                    local startX = self.dragging.startX
+                    local startY = self.dragging.startY
+                    local segments = 6
+                    local amplitude = 4 + 2 * math.sin(love.timer.getTime() * 10)
+                    
+                    for i = 0, segments - 1 do
+                        local t1 = i / segments
+                        local t2 = (i + 1) / segments
+                        
+                        local x1 = startX + (mouseX - startX) * t1
+                        local y1 = startY + (mouseY - startY) * t1
+                        
+                        local x2 = startX + (mouseX - startX) * t2
+                        local y2 = startY + (mouseY - startY) * t2
+                        
+                        -- Add zigzag effect
+                        if i % 2 == 0 then
+                            y1 = y1 + amplitude
+                            y2 = y2 - amplitude
+                        else
+                            y1 = y1 - amplitude
+                            y2 = y2 + amplitude
+                        end
+                        
+                        love.graphics.line(x1, y1, x2, y2)
+                    end
+                    
+                    -- Add attack sparkles
+                    for i = 1, 3 do
+                        local sparkX = mouseX + math.random(-15, 15)
+                        local sparkY = mouseY + math.random(-15, 15)
+                        local sparkSize = math.random(2, 5)
+                        
+                        love.graphics.setColor(1, 0.5, 0.2, 0.8)
+                        love.graphics.circle("fill", sparkX, sparkY, sparkSize)
+                    end
+                end
             else
                 self.instructionMessage = "Drag to an opponent's card to attack"
             end
         else
             self.instructionMessage = "This card has already attacked this turn"
         end
+    end
+end
+
+-- Add fusion particle effects
+function UI:addFusionParticles(x1, y1, x2, y2)
+    -- Draw fusion energy particles between the cards
+    love.graphics.setLineWidth(2)
+    for i = 1, 5 do
+        local t = love.timer.getTime() * 3 + i
+        local dx = (x2 - x1) * 0.5
+        local dy = (y2 - y1) * 0.5
+        
+        -- Create a pulsing effect
+        local pulse = math.sin(t) * 0.4 + 0.6
+        
+        -- Draw energy lines
+        love.graphics.setColor(0.8, 0.2, 0.9, pulse * 0.7)
+        love.graphics.line(
+            x1 + dx * math.sin(t * 0.7),
+            y1 + dy * math.cos(t * 0.7),
+            x2 - dx * math.cos(t * 0.7),
+            y2 - dy * math.sin(t * 0.7)
+        )
+        
+        -- Draw some sparkles
+        love.graphics.setColor(1, 0.7, 1, pulse)
+        local midX = (x1 + x2) / 2 + math.cos(t) * 15
+        local midY = (y1 + y2) / 2 + math.sin(t) * 15
+        love.graphics.circle("fill", midX, midY, 3 + math.sin(t * 2) * 2)
     end
 end
 
