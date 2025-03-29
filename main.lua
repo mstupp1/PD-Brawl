@@ -33,16 +33,31 @@ function love.load()
         }
     }
     
-    -- Occasionally show AI fourth wall breaking message
-    if math.random() < 0.3 then
-        ui:showFourthWallMessage(ai:getFourthWallMessage())
-    end
+    -- Show coin flip animation
+    ui:showCoinFlip(game.coinFlipResult)
 end
 
 function love.update(dt)
     game:update(dt)
     ui:update(dt)
-    ai:update(dt)
+    
+    -- Only run AI logic during AI turn
+    if game.state == "player2Turn" then
+        ai:update(dt)
+    end
+    
+    -- Start game after coin flip animation completes
+    if game.state == "coinFlip" and ui:isCoinFlipComplete() then
+        game:startGame()
+        
+        -- Show who goes first message
+        ui:showMessage("Player " .. game.currentPlayer .. " goes first!")
+        
+        -- Prompt player to place a character on field
+        if game.currentPlayer == 1 then
+            ui:showMessage("Place a character on the field to start")
+        end
+    end
 end
 
 function love.draw()
@@ -67,6 +82,10 @@ end
 
 function love.mousereleased(x, y, button)
     ui:mousereleased(x, y, button)
+end
+
+function love.mousemoved(x, y, dx, dy)
+    ui:mousemoved(x, y, dx, dy)
 end
 
 function love.keypressed(key)

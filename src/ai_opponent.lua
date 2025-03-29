@@ -60,160 +60,158 @@ function AIOpponent:planActions()
     -- Create a priorities list
     local priorities = {}
     
-    -- PRIORITY 1: Play powerful characters if we have few or none on the field
-    if #player.field < 2 then
-        -- Find character cards sorted by power
-        local characters = {}
-        for i, card in ipairs(player.hand) do
-            if card.type == "character" then
-                local essenceCost = card.essenceCost or card.essence or card.cost or 0
-                if player.essence >= essenceCost then
-                    table.insert(characters, {index = i, card = card, power = card.power or 0})
-                end
+    -- PRIORITY 1: Play a character on field if we don't have one
+    if #player.field == 0 then
+        -- Find best character card for field
+        local bestFieldChar = self:findBestCharacterForField(player.hand)
+        
+        if bestFieldChar then
+            table.insert(priorities, {
+                priority = 20, -- Highest priority
+                action = function()
+                    local success, message = self.game:playCard(2, bestFieldChar.index, nil, "field")
+                    if success then
+                        self:adjustActionIndices(bestFieldChar.index)
+                    end
+                end,
+                description = "Play " .. bestFieldChar.card.name .. " on field"
+            })
+        end
+    end
+    
+    -- PRIORITY 2: Place characters on bench if we have room
+    if #player.bench < 3 then
+        -- Find character cards for bench
+        local benchCharacters = self:findCharactersForBench(player.hand, 3 - #player.bench)
+        
+        for _, charData in ipairs(benchCharacters) do
+            table.insert(priorities, {
+                priority = 18 - #player.bench, -- Lower priority than field character
+                action = function()
+                    local success, message = self.game:playCard(2, charData.index, nil, "bench")
+                    if success then
+                        self:adjustActionIndices(charData.index)
+                    end
+                end,
+                description = "Place " .. charData.card.name .. " on bench"
+            })
+        end
+    end
+    
+    -- PRIORITY 3: Perform fusions if possible
+    if #player.bench >= 2 then
+        -- Check for fusion pairs
+        local fusionPairs = self:findFusionPairs(player.bench)
+        
+        if #fusionPairs > 0 and player.essence >= 2 then
+            for _, pair in ipairs(fusionPairs) do
+                table.insert(priorities, {
+                    priority = 16,
+                    action = function()
+                        local success, message = self.game:fusionSummon(2, pair[1], pair[2])
+                    end,
+                    description = "Fuse bench characters " .. player.bench[pair[1]].name .. " and " .. player.bench[pair[2]].name
+                })
+                -- Only plan one fusion per turn
+                break
             end
         end
+    end
+    
+    -- PRIORITY 4: Attach essence to field character
+    if #player.field > 0 and player.essence > 0 then
+        local fieldChar = player.field[1]
+        -- Only attach essence if we plan to attack
+        if fieldChar and not fieldChar.hasAttacked and #opponent.field > 0 then
+            table.insert(priorities, {
+                priority = 15,
+                action = function()
+                    local targetInfo = {
+                        zone = "field",
+                        cardIndex = 1
+                    }
+                    local success, message = self.game:attachEssence(2, targetInfo)
+                end,
+                description = "Attach essence to field character"
+            })
+        end
+    end
+    
+    -- PRIORITY 5: Attack with field character
+    if #player.field > 0 and #opponent.field > 0 and not self.game.firstTurn then
+        local fieldChar = player.field[1]
         
-        -- Sort by power (highest first)
-        table.sort(characters, function(a, b) return a.power > b.power end)
-        
-        -- Add strongest characters to actions
-        for i, char in ipairs(characters) do
-            if i <= 2 then -- Play at most 2 characters
+        if fieldChar and not fieldChar.hasAttacked then
+            -- Determine best attack strength based on available essence
+            local attackStrength = self:determineBestAttackStrength(fieldChar, opponent.field[1])
+            
+            if attackStrength then
                 table.insert(priorities, {
-                    priority = 10 + char.power / 10, -- Higher priority for stronger characters
+                    priority = 14,
                     action = function()
-                        local success, message = self.game:playCard(2, char.index)
+                        local success, message = self.game:attackOpponent(2, attackStrength)
+                    end,
+                    description = "Attack with " .. fieldChar.name .. " using " .. attackStrength .. " attack"
+                })
+            end
+        end
+    end
+    
+    -- PRIORITY 6: Play item cards on characters
+    for i, card in ipairs(player.hand) do
+        if card.type == "item" and player.essence >= card.essenceCost then
+            -- Find best target for item
+            local targetInfo = self:findBestItemTarget(card)
+            
+            if targetInfo then
+                table.insert(priorities, {
+                    priority = 12,
+                    action = function()
+                        local success, message = self.game:playCard(2, i, targetInfo)
                         if success then
-                            self:adjustActionIndices(char.index)
+                            self:adjustActionIndices(i)
                         end
                     end,
-                    description = "Play character " .. char.card.name
+                    description = "Use " .. card.name .. " on " .. (targetInfo.description or "target")
                 })
             end
         end
     end
     
-    -- PRIORITY 2: Perform fusions if possible
-    for i, baseCard in ipairs(player.field) do
-        local validTargets = player:getValidFusionTargets(i)
+    -- PRIORITY 7: Play action cards strategically
+    for i, card in ipairs(player.hand) do
+        if card.type == "action" and player.essence >= card.essenceCost then
+            -- Find appropriate target
+            local targetInfo = self:findBestActionTarget(card)
+            
+            if targetInfo then
+                table.insert(priorities, {
+                    priority = 10,
+                    action = function()
+                        local success, message = self.game:playCard(2, i, targetInfo.target)
+                        if success then
+                            self:adjustActionIndices(i)
+                        end
+                    end,
+                    description = "Use " .. card.name .. " on " .. (targetInfo.description or "target")
+                })
+            end
+        end
+    end
+    
+    -- PRIORITY 8: Switch character from bench to field if needed
+    if #player.field > 0 and #player.bench > 0 and player.essence >= 1 then
+        local currentField = player.field[1]
+        local bestBenchIndex = self:findBestBenchCharacterToField()
         
-        if #validTargets > 0 and player.essence >= 2 then
-            -- Find the best fusion material
-            local bestMaterial = nil
-            local bestScore = -1
-            
-            for _, targetIdx in ipairs(validTargets) do
-                local material = player.hand[targetIdx]
-                local score = 0
-                
-                -- Score based on card type and stats
-                if material.type == "character" then
-                    score = (material.power or 0) * 0.7 + (material.hp or 0) * 0.3
-                elseif material.type == "item" then
-                    score = 50 -- Items often have good fusion results
-                end
-                
-                -- Prefer to use lower cost cards for fusion
-                local cost = material.essenceCost or material.essence or 0
-                score = score - (cost * 5)
-                
-                -- Special cases for known good fusions
-                if baseCard.name == "Sailor Popeye" and material.name == "Can of Spinach" then
-                    score = 200 -- Very high priority for known good fusion
-                elseif baseCard.name == "Sherlock Holmes" and material.name:find("Watson") then
-                    score = 180
-                end
-                
-                if score > bestScore then
-                    bestScore = score
-                    bestMaterial = targetIdx
-                end
-            end
-            
-            if bestMaterial then
-                table.insert(priorities, {
-                    priority = 8 + bestScore / 100, -- High priority for good fusions
-                    action = function()
-                        local materialIndices = {bestMaterial}
-                        self.game:fusionSummon(2, i, materialIndices)
-                        -- Adjust indices for removed material
-                        self:adjustActionIndices(bestMaterial)
-                    end,
-                    description = "Fuse " .. baseCard.name .. " with card from hand"
-                })
-            end
-        end
-    end
-    
-    -- PRIORITY 3: Attack opponent's characters with good trade-offs
-    for i, card in ipairs(player.field) do
-        if not card.hasAttacked and #opponent.field > 0 and card.type == "character" then
-            -- Find best attack target with smart targeting
-            local attackData = self:findBestAttackTarget(card)
-            
-            if attackData then
-                table.insert(priorities, {
-                    priority = attackData.priority,
-                    action = function()
-                        local success, message = self.game:attackCard(2, i, 1, attackData.index)
-                    end,
-                    description = "Attack " .. opponent.field[attackData.index].name .. " with " .. card.name
-                })
-            end
-        end
-    end
-    
-    -- PRIORITY 4: Play action/item cards strategically
-    for i, card in ipairs(player.hand) do
-        if (card.type == "action" or card.type == "item") then
-            local essenceCost = card.essenceCost or card.essence or card.cost or 0
-            if player.essence >= essenceCost then
-                -- Find appropriate target
-                local targetData = self:findBestActionTarget(card)
-                
-                if targetData then
-                    table.insert(priorities, {
-                        priority = targetData.priority,
-                        action = function()
-                            local success, message = self.game:playCard(2, i, targetData.target)
-                            if success then
-                                self:adjustActionIndices(i)
-                            end
-                        end,
-                        description = "Use " .. card.name .. " on " .. (targetData.description or "target")
-                    })
-                end
-            end
-        end
-    end
-    
-    -- PRIORITY 5: Play any remaining characters if we have essence
-    for i, card in ipairs(player.hand) do
-        if card.type == "character" then
-            local essenceCost = card.essenceCost or card.essence or card.cost or 0
-            if player.essence >= essenceCost and #player.field < 5 then
-                -- Check if we've already planned to play this card
-                local alreadyPlanned = false
-                for _, p in ipairs(priorities) do
-                    if p.description == "Play character " .. card.name then
-                        alreadyPlanned = true
-                        break
-                    end
-                end
-                
-                if not alreadyPlanned then
-                    table.insert(priorities, {
-                        priority = 3 + (card.power or 0) / 20, -- Lower priority
-                        action = function()
-                            local success, message = self.game:playCard(2, i)
-                            if success then
-                                self:adjustActionIndices(i)
-                            end
-                        end,
-                        description = "Play character " .. card.name .. " (backup plan)"
-                    })
-                end
-            end
+        if bestBenchIndex and currentField.hp < currentField.maxHp * 0.3 then
+            table.insert(priorities, {
+                priority = 8,
+                action = function()
+                    local success, message = self.game:switchCharacter(2, bestBenchIndex)
+                end,
+                description = "Switch to bench character " .. player.bench[bestBenchIndex].name
+            })
         end
     end
     
@@ -222,7 +220,7 @@ function AIOpponent:planActions()
     
     -- Add top actions to our action queue
     local actionsAdded = 0
-    local maxActions = 4 -- Limit the number of actions per turn
+    local maxActions = 3 -- Limit the number of actions per turn
     
     for _, p in ipairs(priorities) do
         if actionsAdded < maxActions then
@@ -249,83 +247,202 @@ function AIOpponent:planActions()
     end
 end
 
--- Find the best character to attack
-function AIOpponent:findBestAttackTarget(attackerCard)
-    local opponents = self.game.players[1].field
-    local attackerPower = attackerCard.power or 10
-    local myField = self.game.players[2].field
+-- Find the best character for the field
+function AIOpponent:findBestCharacterForField(hand)
+    local bestChar = nil
+    local bestScore = -1
     
-    -- Keep track of best target
-    local bestTarget = {
-        index = nil,
-        priority = 0
-    }
-    
-    -- Analyze each potential target
-    for i, card in ipairs(opponents) do
-        local hp = card.hp or card.currentHP or 0
-        local power = card.power or 10
-        local priority = 0
-        
-        -- Base priority calculation
-        if attackerPower >= hp then
-            -- We can defeat this card in one hit - high priority!
-            priority = 9 + (power / 10) -- Higher priority for defeating stronger cards
-        else
-            -- Can't defeat in one hit
-            if power >= attackerCard.hp then
-                -- Target can defeat us - lower priority
-                priority = 2
-            else
-                -- Neither can defeat the other - medium priority based on damage potential
-                priority = 5 - (hp / attackerPower)
+    for i, card in ipairs(hand) do
+        if card.type == "character" then
+            -- Calculate a score based on stats
+            local score = (card.power or 0) * 1.5 + (card.hp or 0)
+            
+            -- Adjust score based on character type
+            if card.characterType == "z" or card.characterType == "z-fusion" then
+                score = score * 1.3 -- Z-types are generally stronger
             end
-        end
-        
-        -- Adjust priority based on strategic value
-        
-        -- Low HP cards are tempting targets
-        if hp < attackerPower * 0.7 then
-            priority = priority + 2
-        end
-        
-        -- Target high-power opponent cards
-        if power > 20 then
-            priority = priority + power / 20
-        end
-        
-        -- Target cards with special abilities if we can identify them
-        if card.abilities and #card.abilities > 0 then
-            -- Simplistic approach - just count abilities as threat
-            priority = priority + #card.abilities * 0.5
-        end
-        
-        -- If opponent has few cards, prioritize attacking them
-        if #opponents <= 2 then
-            priority = priority + 2
-        end
-        
-        -- Avoid attacking if we'd lose an important card (unless we can one-shot)
-        if power >= attackerCard.hp and attackerPower < hp and #myField <= 2 then
-            priority = priority - 4
-        end
-        
-        -- Update best target if this one has higher priority
-        if priority > bestTarget.priority then
-            bestTarget.index = i
-            bestTarget.priority = priority
+            
+            -- Adjust score based on essence cost vs available essence
+            local player = self.game.players[2]
+            if card.essenceCost > player.essence then
+                score = score * 0.5 -- Penalize if we can't afford it
+            end
+            
+            if score > bestScore then
+                bestScore = score
+                bestChar = {index = i, card = card, score = score}
+            end
         end
     end
     
-    -- Return nil if no good targets
-    if bestTarget.priority <= 0 then
+    return bestChar
+end
+
+-- Find characters to place on bench
+function AIOpponent:findCharactersForBench(hand, maxCount)
+    local characters = {}
+    
+    for i, card in ipairs(hand) do
+        if card.type == "character" then
+            -- Calculate a score for bench placement
+            local score = (card.power or 0) + (card.hp or 0)
+            
+            -- Regular characters get preference for bench (fusion potential)
+            if card.characterType == "regular" then
+                score = score * 1.2
+            end
+            
+            table.insert(characters, {index = i, card = card, score = score})
+        end
+    end
+    
+    -- Sort by score
+    table.sort(characters, function(a, b) return a.score > b.score end)
+    
+    -- Return top characters
+    local result = {}
+    for i = 1, math.min(maxCount, #characters) do
+        table.insert(result, characters[i])
+    end
+    
+    return result
+end
+
+-- Find valid fusion pairs on bench
+function AIOpponent:findFusionPairs(bench)
+    local pairs = {}
+    local player = self.game.players[2]
+    
+    -- Check all possible bench card combinations
+    for i = 1, #bench do
+        for j = i + 1, #bench do
+            local card1 = bench[i]
+            local card2 = bench[j]
+            
+            -- Only regular characters that have been on bench for a turn can fuse
+            if card1.type == "character" and card2.type == "character" and
+               card1.characterType == "regular" and card2.characterType == "regular" and
+               card1.fusable and card2.fusable then
+                table.insert(pairs, {i, j})
+            end
+        end
+    end
+    
+    return pairs
+end
+
+-- Determine best attack strength based on attached essence
+function AIOpponent:determineBestAttackStrength(attackerCard, defenderCard)
+    -- If no essence attached, can't attack
+    if not attackerCard.attachedEssence or attackerCard.attachedEssence == 0 then
         return nil
+    end
+    
+    local attackOptions = {"weak", "medium", "strong", "ultra"}
+    local availableAttacks = {}
+    
+    -- Find attacks we can afford
+    for _, strength in ipairs(attackOptions) do
+        local cost = attackerCard.attackCosts[strength]
+        if cost and attackerCard.attachedEssence >= cost then
+            table.insert(availableAttacks, strength)
+        end
+    end
+    
+    -- If no affordable attacks, return nil
+    if #availableAttacks == 0 then
+        return nil
+    end
+    
+    -- Calculate damage for each attack
+    local attackValues = {}
+    for _, strength in ipairs(availableAttacks) do
+        local damage = 0
+        if strength == "weak" then
+            damage = math.floor(attackerCard.power * 0.5)
+        elseif strength == "medium" then
+            damage = math.floor(attackerCard.power * 0.75)
+        elseif strength == "strong" then
+            damage = attackerCard.power
+        elseif strength == "ultra" then
+            damage = math.floor(attackerCard.power * 1.5)
+        end
+        
+        local cost = attackerCard.attackCosts[strength]
+        local value = damage / cost -- Damage per essence point
+        
+        -- If this attack can defeat the opponent, give it a big bonus
+        if damage >= defenderCard.hp then
+            value = value * 3
+        end
+        
+        table.insert(attackValues, {strength = strength, value = value})
+    end
+    
+    -- Sort by value
+    table.sort(attackValues, function(a, b) return a.value > b.value end)
+    
+    -- Return the best attack strength
+    return attackValues[1].strength
+end
+
+-- Find best target for an item card
+function AIOpponent:findBestItemTarget(itemCard)
+    local player = self.game.players[2]
+    
+    -- Items typically target characters
+    local targetCards = {}
+    
+    -- Check field character first
+    if #player.field > 0 then
+        table.insert(targetCards, {
+            zone = "field",
+            cardIndex = 1,
+            card = player.field[1],
+            description = player.field[1].name
+        })
+    end
+    
+    -- Then check bench characters
+    for i, card in ipairs(player.bench) do
+        table.insert(targetCards, {
+            zone = "bench",
+            cardIndex = i,
+            card = card,
+            description = card.name
+        })
+    end
+    
+    -- Find best card to receive this item
+    local bestTarget = nil
+    local bestScore = -1
+    
+    for _, target in ipairs(targetCards) do
+        local score = 0
+        
+        -- Field characters get preference
+        if target.zone == "field" then
+            score = score + 10
+        end
+        
+        -- Stronger characters get preference
+        score = score + (target.card.power or 0) / 10
+        
+        -- Z and Z-fusion characters get preference
+        if target.card.characterType == "z" or target.card.characterType == "z-fusion" then
+            score = score + 5
+        end
+        
+        if score > bestScore then
+            bestScore = score
+            bestTarget = target
+        end
     end
     
     return bestTarget
 end
 
--- Find best target for action/item card
+-- Find best action card target
 function AIOpponent:findBestActionTarget(card)
     local playerField = self.game.players[2].field
     local opponentField = self.game.players[1].field
@@ -350,113 +467,42 @@ function AIOpponent:findBestActionTarget(card)
         -- Check action card name/abilities to determine targeting strategy
         local cardName = card.name:lower()
         
-        -- Offensive actions - target opponent's strongest card
+        -- Offensive actions - target opponent's character
         if cardName:find("power%-up") or cardName:find("attack") or cardName:find("damage") or 
            cardName:find("destruction") or cardName:find("feast") then
             if #opponentField > 0 then
-                -- Find opponent's strongest character
-                local bestIdx = 1
-                local highestPower = 0
-                
-                for i, oppCard in ipairs(opponentField) do
-                    if (oppCard.power or 0) > highestPower then
-                        highestPower = oppCard.power or 0
-                        bestIdx = i
-                    end
-                end
-                
                 targetData.target = {
                     playerIndex = 1,
-                    cardIndex = bestIdx,
+                    cardIndex = 1,
                     zone = "field"
                 }
                 targetData.priority = 6
-                targetData.description = getCardDesc(1, bestIdx)
+                targetData.description = getCardDesc(1, 1)
             end
-        -- Defensive/buff actions - target our strongest character
+        -- Defensive/buff actions - target our character
         elseif cardName:find("shield") or cardName:find("heal") or cardName:find("boost") or
                cardName:find("protect") or cardName:find("insight") then
             if #playerField > 0 then
-                -- Find our strongest character
-                local bestIdx = 1
-                local highestValue = 0
-                
-                for i, myCard in ipairs(playerField) do
-                    local value = (myCard.power or 0) + (myCard.hp or 0) / 2
-                    if value > highestValue then
-                        highestValue = value
-                        bestIdx = i
-                    end
-                end
-                
                 targetData.target = {
                     playerIndex = 2,
-                    cardIndex = bestIdx,
+                    cardIndex = 1,
                     zone = "field"
                 }
                 targetData.priority = 7
-                targetData.description = getCardDesc(2, bestIdx)
+                targetData.description = getCardDesc(2, 1)
             end
         -- Generic actions - determine based on card specifics
         else
-            -- Default to targeting opponent's field if available
+            -- Default to targeting opponent's character if available
             if #opponentField > 0 then
-                -- Find opponent's weakest character (default target)
-                local bestIdx = 1
-                local lowestHP = math.huge
-                
-                for i, oppCard in ipairs(opponentField) do
-                    if (oppCard.hp or math.huge) < lowestHP then
-                        lowestHP = oppCard.hp or math.huge
-                        bestIdx = i
-                    end
-                end
-                
                 targetData.target = {
                     playerIndex = 1,
-                    cardIndex = bestIdx,
+                    cardIndex = 1,
                     zone = "field"
                 }
                 targetData.priority = 4
-                targetData.description = getCardDesc(1, bestIdx)
+                targetData.description = getCardDesc(1, 1)
             end
-        end
-    elseif card.type == "item" then
-        -- Items usually target our own field
-        if #playerField > 0 then
-            -- Find our best character to improve
-            local bestIdx = 1
-            local bestScore = 0
-            
-            for i, myCard in ipairs(playerField) do
-                -- Score based on character stats, prioritizing more powerful cards
-                local score = (myCard.power or 0) * 1.5 + (myCard.hp or 0) * 0.5
-                
-                -- Special cases for good item combinations
-                if myCard.name == "Sailor Popeye" and card.name == "Can of Spinach" then
-                    score = score * 3 -- Triple score for thematic combination
-                elseif myCard.name:find("Sherlock") and card.name:find("Deerstalker") then
-                    score = score * 2.5
-                end
-                
-                -- Prioritize characters already in combat
-                if myCard.hasAttacked then
-                    score = score * 0.7 -- Lower priority for already used characters
-                end
-                
-                if score > bestScore then
-                    bestScore = score
-                    bestIdx = i
-                end
-            end
-            
-            targetData.target = {
-                playerIndex = 2,
-                cardIndex = bestIdx,
-                zone = "field"
-            }
-            targetData.priority = 5 + bestScore / 100
-            targetData.description = getCardDesc(2, bestIdx)
         end
     end
     
@@ -466,6 +512,34 @@ function AIOpponent:findBestActionTarget(card)
     end
     
     return targetData
+end
+
+-- Find best bench character to switch to field
+function AIOpponent:findBestBenchCharacterToField()
+    local player = self.game.players[2]
+    
+    if #player.bench == 0 then
+        return nil
+    end
+    
+    local bestIndex = 1
+    local bestScore = -1
+    
+    for i, card in ipairs(player.bench) do
+        local score = (card.power or 0) + (card.hp or 0) / 2
+        
+        -- Z-types and Z-fusions are generally better
+        if card.characterType == "z" or card.characterType == "z-fusion" then
+            score = score * 1.3
+        end
+        
+        if score > bestScore then
+            bestScore = score
+            bestIndex = i
+        end
+    end
+    
+    return bestIndex
 end
 
 -- Adjust action indices after a card is removed from hand

@@ -22,6 +22,19 @@ function Card.new(data)
         self.maxHp = data.hp or 50
         self.power = data.power or 10
         self.hasAttacked = false
+        self.characterType = data.characterType or "regular" -- regular, z, fusion, z-fusion
+        self.fusable = false -- Characters must be on field for a turn before they can fuse
+        self.justPlayed = true -- Track if the character was just played
+        self.attachedEssence = 0 -- Essence attached to the character for attacks
+        self.attachedItems = {} -- Items attached to the character
+        
+        -- Attack costs
+        self.attackCosts = data.attackCosts or {
+            weak = 1,   -- 50% power
+            medium = 2, -- 75% power
+            strong = 3, -- 100% power
+            ultra = 4   -- 150% power
+        }
     elseif self.type == "item" then
         self.target = data.target or "character" -- What the item can target
         self.effect = data.effect or function() end
@@ -46,24 +59,21 @@ end
 
 -- Check if this card can fuse with another card
 function Card:canFuseWith(card)
-    -- Default implementation for fusion compatibility
-    -- This should be overridden or enhanced based on actual fusion rules
-    
-    -- For now, assume characters can fuse with items
-    if self.type == "character" and card.type == "item" then
-        return true
+    -- Only regular characters can fuse
+    if self.type ~= "character" or card.type ~= "character" then
+        return false
     end
     
-    -- Characters might have specific fusion requirements
-    if self.fusionRequirements then
-        for _, req in ipairs(self.fusionRequirements) do
-            if card.id == req then
-                return true
-            end
-        end
+    if self.characterType ~= "regular" or card.characterType ~= "regular" then
+        return false
     end
     
-    return false
+    -- Both characters must have been on bench for a turn
+    if not self.fusable or not card.fusable then
+        return false
+    end
+    
+    return true
 end
 
 -- Get a fourth-wall breaking quote
@@ -173,28 +183,38 @@ end
 
 -- Get visual representation data
 function Card:getVisualData()
-    return {
+    local visualData = {
         name = self.name,
         type = self.type,
         cost = self.essenceCost,
         rarity = self.rarity,
-        stats = self.type == "character" and {
-            hp = self.hp,
-            maxHp = self.maxHp,
-            power = self.power
-        } or nil,
         flavorText = self.flavorText,
         art = self.artVariant,
         buffs = self.buffs or {}
     }
+    
+    if self.type == "character" then
+        visualData.stats = {
+            hp = self.hp,
+            maxHp = self.maxHp,
+            power = self.power,
+            characterType = self.characterType,
+            attackCosts = self.attackCosts,
+            attachedEssence = self.attachedEssence or 0,
+            attachedItems = #self.attachedItems or 0
+        }
+    end
+    
+    return visualData
 end
 
 -- Create a character card
-function Card.createCharacter(name, flavorText, essenceCost, hp, power, rarity)
+function Card.createCharacter(name, flavorText, essenceCost, hp, power, rarity, characterType)
     return Card.new({
         id = "custom_" .. name:gsub("%s+", "_"):lower(),
         name = name,
         type = "character",
+        characterType = characterType or "regular", -- regular, z, fusion, z-fusion
         essenceCost = essenceCost or 1,
         hp = hp or 100,
         power = power or 10,
@@ -202,6 +222,12 @@ function Card.createCharacter(name, flavorText, essenceCost, hp, power, rarity)
         flavorText = flavorText or "",
         artVariant = "standard",
         abilities = {},
+        attackCosts = {
+            weak = 1,   -- 50% power
+            medium = 2, -- 75% power
+            strong = 3, -- 100% power
+            ultra = 4   -- 150% power
+        },
         fourthWallQuotes = {
             {context = "play", text = "I'm ready to join the battle!"},
             {context = "attack", text = "Take that!"},

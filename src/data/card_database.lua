@@ -19,6 +19,7 @@ local cardData = {
             id = "popeye_standard",
             name = "Sailor Popeye",
             type = "character",
+            characterType = "regular",
             essenceCost = 2,
             hp = 100,
             power = 30,
@@ -26,6 +27,12 @@ local cardData = {
             flavorText = "I yam what I yam and that's all what I yam!",
             artVariant = "standard",
             abilities = {"spinach_power"},
+            attackCosts = {
+                weak = 1,
+                medium = 2,
+                strong = 3,
+                ultra = 4
+            },
             fourthWallQuotes = {
                 {context = "play", text = "Ready to clobber the competition, I am!"},
                 {context = "attack", text = "Hope ya don't mind me breakin' the fourth wall!"},
@@ -37,6 +44,7 @@ local cardData = {
             id = "popeye_fusion",
             name = "Spinach-Powered Popeye",
             type = "character",
+            characterType = "z-fusion",
             essenceCost = 4,
             hp = 150,
             power = 50,
@@ -44,6 +52,12 @@ local cardData = {
             flavorText = "I'm strong to the finish, 'cause I eats me spinach!",
             artVariant = "fusion",
             abilities = {"spinach_power", "anchor_toss"},
+            attackCosts = {
+                weak = 1,
+                medium = 2,
+                strong = 3,
+                ultra = 4
+            },
             fourthWallQuotes = {
                 {context = "play", text = "The animator gave me extra muscles this time!"},
                 {context = "attack", text = "I'll knock ya right outta the card frame!"},
@@ -56,6 +70,7 @@ local cardData = {
             id = "steamboat_mickey",
             name = "Steamboat Mickey",
             type = "character",
+            characterType = "regular",
             essenceCost = 1,
             hp = 60,
             power = 15,
@@ -63,6 +78,12 @@ local cardData = {
             flavorText = "Whistling away on the steamboat!",
             artVariant = "vintage",
             abilities = {"whistle_distraction"},
+            attackCosts = {
+                weak = 1,
+                medium = 2,
+                strong = 3,
+                ultra = 4
+            },
             fourthWallQuotes = {
                 {context = "play", text = "Finally free from the clutches of copyright!"},
                 {context = "damage", text = "Ouch! Careful with the vintage character!"},
@@ -74,6 +95,7 @@ local cardData = {
             id = "cigar_mickey",
             name = "Cigar-Chomping Mickey",
             type = "character",
+            characterType = "z",
             essenceCost = 3,
             hp = 80,
             power = 25,
@@ -81,6 +103,12 @@ local cardData = {
             flavorText = "A little edgier than the corporate version...",
             artVariant = "parody",
             abilities = {"smoke_screen", "whistle_distraction"},
+            attackCosts = {
+                weak = 1,
+                medium = 2,
+                strong = 3,
+                ultra = 4
+            },
             fourthWallQuotes = {
                 {context = "play", text = "The big company would NEVER let me smoke in their parks!"},
                 {context = "attack", text = "Surprise! I'm not the family-friendly version!"},
@@ -93,6 +121,7 @@ local cardData = {
             id = "sherlock_holmes",
             name = "Sherlock Holmes",
             type = "character",
+            characterType = "regular",
             essenceCost = 3,
             hp = 80,
             power = 20,
@@ -100,6 +129,12 @@ local cardData = {
             flavorText = "Elementary, my dear player.",
             artVariant = "classic",
             abilities = {"deduction", "pipe_smoke"},
+            attackCosts = {
+                weak = 1,
+                medium = 2,
+                strong = 3,
+                ultra = 4
+            },
             fourthWallQuotes = {
                 {context = "play", text = "I've been in the public domain so long, I've lost count of my adaptations!"},
                 {context = "examine", text = "I can see you're holding your cards at a slight angle. Interesting."},
@@ -111,6 +146,7 @@ local cardData = {
             id = "sexy_sherlock",
             name = "Sexy Sherlock",
             type = "character",
+            characterType = "z",
             essenceCost = 4,
             hp = 90,
             power = 25,
@@ -118,6 +154,12 @@ local cardData = {
             flavorText = "The game is afoot... and so am I.",
             artVariant = "parody",
             abilities = {"deduction", "charming_distraction"},
+            attackCosts = {
+                weak = 1,
+                medium = 2,
+                strong = 3,
+                ultra = 4
+            },
             fourthWallQuotes = {
                 {context = "play", text = "Sir Arthur Conan Doyle never described me THIS way!"},
                 {context = "attack", text = "My powers of observation note you're blushing!"},
@@ -130,6 +172,7 @@ local cardData = {
             id = "count_dracula",
             name = "Count Dracula",
             type = "character",
+            characterType = "regular",
             essenceCost = 3,
             hp = 100,
             power = 25,
@@ -137,6 +180,12 @@ local cardData = {
             flavorText = "I vant to drink your... essence!",
             artVariant = "classic",
             abilities = {"life_drain", "bat_form"},
+            attackCosts = {
+                weak = 1,
+                medium = 2,
+                strong = 3,
+                ultra = 4
+            },
             fourthWallQuotes = {
                 {context = "play", text = "Bram Stoker created me, but the public domain sustains me!"},
                 {context = "attack", text = "I never drink... coffee. But I will drain your life points!"},
@@ -148,6 +197,7 @@ local cardData = {
             id = "surfer_dracula",
             name = "Surfer Dude Dracula",
             type = "character",
+            characterType = "z",
             essenceCost = 3,
             hp = 90,
             power = 30,
@@ -155,6 +205,12 @@ local cardData = {
             flavorText = "Hanging ten under the moonlight, dude!",
             artVariant = "parody",
             abilities = {"life_drain", "wave_rider"},
+            attackCosts = {
+                weak = 1,
+                medium = 2,
+                strong = 3,
+                ultra = 4
+            },
             fourthWallQuotes = {
                 {context = "play", text = "Bram Stoker is totally rolling in his grave right now, dude!"},
                 {context = "attack", text = "Gonna catch some waves and some blood, bro!"},
@@ -323,6 +379,7 @@ local cardData = {
                 id = "detective_duo",
                 name = "Holmes & Watson",
                 type = "character",
+                characterType = "fusion",
                 essenceCost = 5,
                 hp = 140,
                 power = 35,
@@ -330,10 +387,45 @@ local cardData = {
                 flavorText = "The dynamic duo of deduction!",
                 artVariant = "fusion",
                 abilities = {"deduction", "faithful_assistant", "pipe_smoke"},
+                attackCosts = {
+                    weak = 1,
+                    medium = 2,
+                    strong = 3,
+                    ultra = 4
+                },
                 fourthWallQuotes = {
                     {context = "play", text = "Together in the public domain, solving mysteries across card games!"},
                     {context = "attack", text = "Watson, observe how I break this fourth wall!"},
                     {context = "win", text = "The case of the card game victory is closed!"}
+                }
+            }
+        },
+        {
+            id = "mickey_dracula_fusion",
+            baseCard = "steamboat_mickey",
+            materials = {"count_dracula"},
+            result = {
+                id = "vampire_mickey",
+                name = "Vampire Mickey",
+                type = "character",
+                characterType = "z-fusion",
+                essenceCost = 4,
+                hp = 120,
+                power = 40,
+                rarity = "legendary",
+                flavorText = "Whistling for blood under the moonlight!",
+                artVariant = "fusion",
+                abilities = {"life_drain", "whistle_distraction", "night_prowler"},
+                attackCosts = {
+                    weak = 1,
+                    medium = 2,
+                    strong = 3,
+                    ultra = 4
+                },
+                fourthWallQuotes = {
+                    {context = "play", text = "Free from copyright AND mortal limitations!"},
+                    {context = "attack", text = "My bite is worse than my whistle!"},
+                    {context = "win", text = "Public domain characters unite!"}
                 }
             }
         }

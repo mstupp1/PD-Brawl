@@ -8,9 +8,11 @@ function Player.new(playerIndex)
     
     self.playerIndex = playerIndex
     self.essence = 0
-    self.maxEssence = 10
+    self.maxEssence = 1 -- Limited to 1 essence maximum
+    self.hearts = 3     -- Each player starts with 3 hearts
     self.hand = {}
-    self.field = {}
+    self.field = {}     -- Single active character
+    self.bench = {}     -- Bench for up to 3 reserve characters
     self.deck = {}
     self.fusionDeck = {}
     self.graveyard = {}
@@ -45,9 +47,26 @@ function Player:drawInitialHand()
     end
 end
 
+-- Draw multiple cards
+function Player:drawCards(count)
+    local result = true
+    local message = "Drew " .. count .. " cards"
+    
+    for i = 1, count do
+        local success, cardMsg = self:drawCard()
+        if not success then
+            result = false
+            message = cardMsg
+            break
+        end
+    end
+    
+    return result, message
+end
+
 -- Add essence to player
 function Player:addEssence(amount)
-    self.essence = self.essence + amount
+    self.essence = math.min(self.essence + amount, self.maxEssence)
     return self.essence
 end
 
@@ -61,6 +80,12 @@ function Player:useEssence(amount)
     return true, "Essence used"
 end
 
+-- Decrease player hearts
+function Player:loseHeart(amount)
+    self.hearts = self.hearts - amount
+    return self.hearts <= 0, "Player lost " .. amount .. " heart(s)"
+end
+
 -- Remove a card from hand
 function Player:removeCardFromHand(index)
     if not self.hand[index] then
@@ -71,10 +96,26 @@ function Player:removeCardFromHand(index)
     return true
 end
 
--- Add a card to field
+-- Add a card to field (single character slot)
 function Player:addToField(card)
-    table.insert(self.field, card)
-    return #self.field
+    -- Replace any existing card on field
+    if #self.field > 0 then
+        table.insert(self.graveyard, self.field[1])
+        self.field[1] = card
+    else
+        table.insert(self.field, card)
+    end
+    return true
+end
+
+-- Add a card to bench (up to 3 characters)
+function Player:addToBench(card)
+    if #self.bench >= 3 then
+        return false, "Bench is full"
+    end
+    
+    table.insert(self.bench, card)
+    return true
 end
 
 -- Remove a card from field
@@ -88,19 +129,35 @@ function Player:removeFromField(index)
     return card
 end
 
--- Replace a card on field with a new one (for fusion)
-function Player:replaceOnField(index, newCard)
-    if not self.field[index] then
-        return false, "Invalid field index"
+-- Remove a card from bench
+function Player:removeFromBench(index)
+    if not self.bench[index] then
+        return false, "Invalid bench index"
     end
     
-    local oldCard = self.field[index]
-    self.field[index] = newCard
+    local card = table.remove(self.bench, index)
+    table.insert(self.graveyard, card)
+    return card
+end
+
+-- Move card from bench to field
+function Player:benchToField(benchIndex)
+    if not self.bench[benchIndex] then
+        return false, "Invalid bench index"
+    end
     
-    -- Add old card to graveyard
-    table.insert(self.graveyard, oldCard)
+    -- If there's already a character on field, swap them
+    if #self.field > 0 then
+        local fieldCard = self.field[1]
+        self.field[1] = self.bench[benchIndex]
+        self.bench[benchIndex] = fieldCard
+    else
+        -- Otherwise just move bench card to field
+        self.field[1] = self.bench[benchIndex]
+        table.remove(self.bench, benchIndex)
+    end
     
-    return newCard
+    return true
 end
 
 -- Attack opponent's card
@@ -133,16 +190,26 @@ function Player:attackCard(attackingIndex, targetPlayer, targetIndex)
     return true, string.format("%s damaged %s! %d HP remaining", attacker.name, target.name, target.hp)
 end
 
--- Get all valid fusion targets in hand
-function Player:getValidFusionTargets(baseCardIndex)
-    local baseCard = self.field[baseCardIndex]
-    if not baseCard then return {} end
+-- Get all valid fusion targets on bench
+function Player:getValidFusionTargets(benchCardIndex)
+    local baseCard = self.bench[benchCardIndex]
+    if not baseCard or baseCard.type ~= "character" or baseCard.characterType ~= "regular" then 
+        return {} 
+    end
+    
+    -- Only regular characters that have been on the bench for a turn can fuse
+    if not baseCard.fusable then
+        return {}
+    end
     
     local validTargets = {}
     
-    -- Check each card in hand for fusion compatibility
-    for i, card in ipairs(self.hand) do
-        if baseCard:canFuseWith(card) then
+    -- Check each card on bench for fusion compatibility
+    for i, card in ipairs(self.bench) do
+        if i ~= benchCardIndex and 
+           card.type == "character" and 
+           card.characterType == "regular" and
+           card.fusable then
             table.insert(validTargets, i)
         end
     end
@@ -154,29 +221,15 @@ end
 function Player:getStateInfo()
     return {
         essence = self.essence,
+        maxEssence = self.maxEssence,
+        hearts = self.hearts,
         handCount = #self.hand,
         fieldCount = #self.field,
+        benchCount = #self.bench,
         deckCount = #self.deck,
         graveyardCount = #self.graveyard,
         defeatedEnemyCount = self.defeatedEnemyCount
     }
-end
-
--- Draw multiple cards
-function Player:drawCards(count)
-    local result = true
-    local message = "Drew " .. count .. " cards"
-    
-    for i = 1, count do
-        local success, cardMsg = self:drawCard()
-        if not success then
-            result = false
-            message = cardMsg
-            break
-        end
-    end
-    
-    return result, message
 end
 
 return Player 
