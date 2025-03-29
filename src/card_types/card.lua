@@ -186,7 +186,6 @@ function Card:getVisualData()
     local visualData = {
         name = self.name,
         type = self.type,
-        cost = self.essenceCost,
         rarity = self.rarity,
         flavorText = self.flavorText,
         art = self.artVariant,

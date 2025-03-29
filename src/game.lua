@@ -176,17 +176,12 @@ function Game:playCard(playerIndex, cardIndex, targetInfo, zone)
             return false, "Bench is full"
         end
         
-        -- For character cards on field, check essence cost
-        if zone == "field" and player.essence < card.essenceCost then
-            return false, "Not enough essence"
-        end
-        
-        -- Move card from hand to appropriate zone
+        -- Move card from hand to appropriate zone (no essence cost check)
         player:removeCardFromHand(cardIndex)
         
         if zone == "field" then
             player:addToField(card)
-            player:useEssence(card.essenceCost)
+            -- No essence cost for playing cards
         elseif zone == "bench" then
             player:addToBench(card)
             -- Mark as just played so it can't fuse immediately
@@ -214,12 +209,7 @@ function Game:playCard(playerIndex, cardIndex, targetInfo, zone)
             return false, "Items can only be attached to characters"
         end
         
-        -- Check if player has enough essence
-        if player.essence < card.essenceCost then
-            return false, "Not enough essence"
-        end
-        
-        -- Attach item to character
+        -- Attach item to character (no essence cost check)
         if not targetCard.attachedItems then
             targetCard.attachedItems = {}
         end
@@ -231,22 +221,15 @@ function Game:playCard(playerIndex, cardIndex, targetInfo, zone)
         -- Remove card from hand
         player:removeCardFromHand(cardIndex)
         
-        -- Use essence
-        player:useEssence(card.essenceCost)
+        -- No essence cost for playing cards
         
     -- Action cards
     elseif card.type == "action" then
-        -- Check if player has enough essence
-        if player.essence < card.essenceCost then
-            return false, "Not enough essence"
-        end
-        
-        -- Process action card effect
+        -- Process action card effect (no essence cost check)
         local success, message = card:play(player, self, targetInfo)
         
         if success then
-            -- Deduct essence cost
-            player:useEssence(card.essenceCost)
+            -- No essence cost for playing cards
             
             -- Remove card from hand
             player:removeCardFromHand(cardIndex)

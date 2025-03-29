@@ -7,10 +7,26 @@ local CARD_WIDTH = 120
 local CARD_HEIGHT = 180
 local CARD_CORNER_RADIUS = 10
 local CARD_SPACING = 25
+
+-- Center position of the screen
+local CENTER_X = love.graphics.getWidth() / 2
+local CENTER_Y = love.graphics.getHeight() / 2
+
+-- Layout constants - reorganized for a cleaner grid
+local FIELD_VERTICAL_GAP = 60 -- Gap between player 1 and player 2 field positions
+local FIELD_TO_BENCH_GAP = 40 -- Gap between field and bench
+local BENCH_SPACING = 20      -- Spacing between bench cards
+
+-- Y-positions (vertical layout)
+local PLAYER1_FIELD_Y = CENTER_Y + FIELD_VERTICAL_GAP/2
+local PLAYER2_FIELD_Y = CENTER_Y - FIELD_VERTICAL_GAP/2 - CARD_HEIGHT
+local PLAYER1_BENCH_Y = PLAYER1_FIELD_Y + CARD_HEIGHT + FIELD_TO_BENCH_GAP
+local PLAYER2_BENCH_Y = PLAYER2_FIELD_Y - FIELD_TO_BENCH_GAP - CARD_HEIGHT
+
+-- Hand position
 local HAND_Y_OFFSET = love.graphics.getHeight() - 220
-local FIELD_Y_OFFSET = love.graphics.getHeight() / 2
-local BENCH_Y_OFFSET_P1 = FIELD_Y_OFFSET + 80 -- Location of bench for player 1
-local BENCH_Y_OFFSET_P2 = FIELD_Y_OFFSET - 80 -- Location of bench for player 2
+
+-- Other display positions
 local ESSENCE_DISPLAY_X = 40
 local ESSENCE_DISPLAY_Y = love.graphics.getHeight() - 60
 local DECK_DISPLAY_X = love.graphics.getWidth() - 140
@@ -69,8 +85,8 @@ function UI.new(game)
         },
         player1HandPositions = {},
         player2HandPositions = {},
-        player1FieldPosition = { x = love.graphics.getWidth() / 2 - CARD_WIDTH / 2, y = love.graphics.getHeight() / 2 + 80 },
-        player2FieldPosition = { x = love.graphics.getWidth() / 2 - CARD_WIDTH / 2, y = love.graphics.getHeight() / 2 - 80 - CARD_HEIGHT },
+        player1FieldPosition = { x = CENTER_X - CARD_WIDTH / 2, y = PLAYER1_FIELD_Y },
+        player2FieldPosition = { x = CENTER_X - CARD_WIDTH / 2, y = PLAYER2_FIELD_Y },
         player1BenchPositions = {},
         player2BenchPositions = {},
         player1GraveyardPosition = { x = 50, y = love.graphics.getHeight() - 230 },
@@ -239,26 +255,25 @@ function UI:updateCardPositions()
     
     -- Calculate field position for player 1 (single card slot)
     self.player1FieldPosition = {
-        x = screenWidth / 2 - CARD_WIDTH / 2,
-        y = love.graphics.getHeight() / 2 + 80
+        x = CENTER_X - CARD_WIDTH / 2,
+        y = PLAYER1_FIELD_Y
     }
     
     -- Calculate field position for player 2 (single card slot)
     self.player2FieldPosition = {
-        x = screenWidth / 2 - CARD_WIDTH / 2,
-        y = love.graphics.getHeight() / 2 - 80 - CARD_HEIGHT
+        x = CENTER_X - CARD_WIDTH / 2,
+        y = PLAYER2_FIELD_Y
     }
     
     -- Calculate bench positions for player 1 (3 slots)
     self.player1BenchPositions = {}
-    local benchCardSpacing = 20
-    local totalBenchWidth = 3 * CARD_WIDTH + 2 * benchCardSpacing
-    local benchStartX = (screenWidth - totalBenchWidth) / 2
+    local totalBenchWidth = 3 * CARD_WIDTH + 2 * BENCH_SPACING
+    local benchStartX = CENTER_X - totalBenchWidth / 2
     
     for i = 1, 3 do
         self.player1BenchPositions[i] = {
-            x = benchStartX + (i - 1) * (CARD_WIDTH + benchCardSpacing),
-            y = BENCH_Y_OFFSET_P1
+            x = benchStartX + (i - 1) * (CARD_WIDTH + BENCH_SPACING),
+            y = PLAYER1_BENCH_Y
         }
     end
     
@@ -267,8 +282,8 @@ function UI:updateCardPositions()
     
     for i = 1, 3 do
         self.player2BenchPositions[i] = {
-            x = benchStartX + (i - 1) * (CARD_WIDTH + benchCardSpacing),
-            y = BENCH_Y_OFFSET_P2
+            x = benchStartX + (i - 1) * (CARD_WIDTH + BENCH_SPACING),
+            y = PLAYER2_BENCH_Y
         }
     end
 end
@@ -437,9 +452,33 @@ function UI:draw()
     love.graphics.rectangle("fill", 0, 0, love.graphics.getWidth(), 200)
     
     -- Draw mid-field divider (nicer styling)
-    love.graphics.setColor(0.3, 0.3, 0.5, 0.3)
-    love.graphics.setLineWidth(3)
-    love.graphics.line(0, love.graphics.getHeight() / 2, love.graphics.getWidth(), love.graphics.getHeight() / 2)
+    love.graphics.setColor(0.4, 0.4, 0.7, 0.3)
+    love.graphics.setLineWidth(4)
+    
+    -- Draw main divider line at center of field area
+    local dividerY = CENTER_Y
+    love.graphics.line(
+        love.graphics.getWidth() * 0.1, 
+        dividerY, 
+        love.graphics.getWidth() * 0.9, 
+        dividerY
+    )
+    
+    -- Add some decorative elements
+    local centerX = love.graphics.getWidth() / 2
+    
+    -- Draw circular indicator at center of field
+    love.graphics.circle("line", centerX, dividerY, 20)
+    love.graphics.setColor(0.4, 0.4, 0.7, 0.1)
+    love.graphics.circle("fill", centerX, dividerY, 20)
+    
+    -- Draw smaller divider marks
+    love.graphics.setColor(0.4, 0.4, 0.7, 0.2)
+    love.graphics.setLineWidth(2)
+    for i = 1, 6 do
+        local x = centerX - 150 + i * 50
+        love.graphics.line(x, dividerY - 10, x, dividerY + 10)
+    end
     
     -- Draw player stats
     self:drawPlayerStats(1) -- Player
@@ -612,8 +651,8 @@ end
 
 -- Draw the game table
 function UI:drawGameTable()
-    -- Draw the main play area
-    love.graphics.setColor(COLORS.tableBg)
+    -- Draw the main play area with a nice gradient
+    love.graphics.setColor(0.1, 0.15, 0.3, 0.8)
     love.graphics.rectangle(
         "fill", 
         love.graphics.getWidth() * 0.05, 
@@ -623,36 +662,66 @@ function UI:drawGameTable()
         20, 20
     )
     
-    -- Draw player 1 area
-    love.graphics.setColor(0.15, 0.2, 0.4, 0.3)
+    -- Add subtle grid pattern to the play area
+    love.graphics.setColor(0.3, 0.4, 0.6, 0.05)
+    love.graphics.setLineWidth(1)
+    
+    local gridSize = 40
+    for x = love.graphics.getWidth() * 0.05, love.graphics.getWidth() * 0.95, gridSize do
+        love.graphics.line(
+            x, love.graphics.getHeight() * 0.15,
+            x, love.graphics.getHeight() * 0.85
+        )
+    end
+    
+    for y = love.graphics.getHeight() * 0.15, love.graphics.getHeight() * 0.85, gridSize do
+        love.graphics.line(
+            love.graphics.getWidth() * 0.05, y,
+            love.graphics.getWidth() * 0.95, y
+        )
+    end
+    
+    -- Draw player 1 area (bottom half)
+    love.graphics.setColor(0.15, 0.2, 0.4, 0.2)
     love.graphics.rectangle(
         "fill",
         love.graphics.getWidth() * 0.05,
-        FIELD_Y_OFFSET + 20,
+        CENTER_Y,
         love.graphics.getWidth() * 0.9,
         love.graphics.getHeight() * 0.35,
         20, 20
     )
     
-    -- Draw player 2 area
-    love.graphics.setColor(0.4, 0.2, 0.15, 0.3)
+    -- Draw player 2 area (top half)
+    love.graphics.setColor(0.2, 0.15, 0.4, 0.2) 
     love.graphics.rectangle(
         "fill",
         love.graphics.getWidth() * 0.05,
         love.graphics.getHeight() * 0.15,
         love.graphics.getWidth() * 0.9,
-        FIELD_Y_OFFSET - love.graphics.getHeight() * 0.15 - 20,
+        CENTER_Y - love.graphics.getHeight() * 0.15,
         20, 20
     )
     
-    -- Draw dividing line
-    love.graphics.setColor(0.6, 0.6, 0.6, 0.5)
-    love.graphics.setLineWidth(3)
-    love.graphics.line(
+    -- Add subtle borders for player areas
+    love.graphics.setColor(0.3, 0.4, 0.7, 0.3)
+    love.graphics.setLineWidth(2)
+    love.graphics.rectangle(
+        "line",
         love.graphics.getWidth() * 0.05,
-        FIELD_Y_OFFSET,
-        love.graphics.getWidth() * 0.95,
-        FIELD_Y_OFFSET
+        CENTER_Y,
+        love.graphics.getWidth() * 0.9,
+        love.graphics.getHeight() * 0.35,
+        20, 20
+    )
+    
+    love.graphics.rectangle(
+        "line",
+        love.graphics.getWidth() * 0.05,
+        love.graphics.getHeight() * 0.15,
+        love.graphics.getWidth() * 0.9,
+        CENTER_Y - love.graphics.getHeight() * 0.15,
+        20, 20
     )
 end
 
@@ -872,47 +941,7 @@ function UI:drawEnhancedCard(card, x, y, highlighted)
     local typeText = (typeIcons[card.type] or "") .. " " .. card.type:gsub("^%l", string.upper)
     love.graphics.printf(typeText, x + 10, y + 30, nameWidth, "center")
     
-    -- Draw essence cost with nice styling
-    if card.essenceCost then
-        -- Draw essence circle with glow effect
-        love.graphics.setColor(0.9, 0.7, 0.2, 0.3)
-        love.graphics.circle("fill", x + cardWidth - 15, y + 15, 15)
-        
-        love.graphics.setColor(0.9, 0.7, 0.2)
-        love.graphics.circle("fill", x + cardWidth - 15, y + 15, 12)
-        
-        love.graphics.setColor(0.1, 0.1, 0.1)
-        love.graphics.circle("line", x + cardWidth - 15, y + 15, 12)
-        
-        -- Draw essence cost value
-        love.graphics.setFont(self.fonts.medium)
-        love.graphics.setColor(0, 0, 0)
-        love.graphics.print(card.essenceCost, x + cardWidth - 25, y + 8)
-        
-        -- Draw essence cost value with shadow
-        love.graphics.setColor(1, 1, 1)
-        love.graphics.print(card.essenceCost, x + cardWidth - 26, y + 7)
-    elseif card.essence then
-        -- For backward compatibility with cards using essence property
-        -- Draw essence circle with glow effect
-        love.graphics.setColor(0.9, 0.7, 0.2, 0.3)
-        love.graphics.circle("fill", x + cardWidth - 15, y + 15, 15)
-        
-        love.graphics.setColor(0.9, 0.7, 0.2)
-        love.graphics.circle("fill", x + cardWidth - 15, y + 15, 12)
-        
-        love.graphics.setColor(0.1, 0.1, 0.1)
-        love.graphics.circle("line", x + cardWidth - 15, y + 15, 12)
-        
-        -- Draw essence cost value
-        love.graphics.setFont(self.fonts.medium)
-        love.graphics.setColor(0, 0, 0)
-        love.graphics.print(card.essence, x + cardWidth - 25, y + 8)
-        
-        -- Draw essence cost value with shadow
-        love.graphics.setColor(1, 1, 1)
-        love.graphics.print(card.essence, x + cardWidth - 26, y + 7)
-    end
+    -- No essence cost displayed
     
     -- Draw character portrait area with border
     love.graphics.setColor(0.2, 0.2, 0.2, 0.3)
@@ -1223,12 +1252,24 @@ function UI:drawPlayerField(playerIndex)
     local player = self.game.players[playerIndex]
     local pos = self["player" .. playerIndex .. "FieldPosition"]
     
-    -- Draw field zone outline
-    love.graphics.setColor(0.3, 0.5, 0.8, 0.3)
-    love.graphics.rectangle("fill", pos.x - 10, pos.y - 10, CARD_WIDTH + 20, CARD_HEIGHT + 20, 5, 5)
+    -- Draw field zone outline with enhanced styling
+    if playerIndex == self.game.currentPlayer then
+        -- Highlight current player's field with glowing effect
+        love.graphics.setColor(0.4, 0.6, 0.9, 0.2 + 0.1 * math.sin(love.timer.getTime() * 2))
+    else
+        love.graphics.setColor(0.3, 0.5, 0.8, 0.2)
+    end
+    
+    -- Draw field area with rounded corners
+    love.graphics.rectangle("fill", pos.x - 15, pos.y - 15, CARD_WIDTH + 30, CARD_HEIGHT + 30, 10, 10)
+    
+    -- Draw border
+    love.graphics.setColor(0.4, 0.6, 0.9, 0.5)
+    love.graphics.setLineWidth(2)
+    love.graphics.rectangle("line", pos.x - 15, pos.y - 15, CARD_WIDTH + 30, CARD_HEIGHT + 30, 10, 10)
     
     -- Draw field label
-    love.graphics.setColor(1, 1, 1, 0.7)
+    love.graphics.setColor(1, 1, 1, 0.8)
     love.graphics.setFont(self.fonts.small)
     love.graphics.print("FIELD", pos.x + CARD_WIDTH/2 - 20, pos.y - 30)
     
@@ -1300,26 +1341,52 @@ function UI:drawPlayerBench(playerIndex)
     local player = self.game.players[playerIndex]
     local positions = self["player" .. playerIndex .. "BenchPositions"]
     
+    -- Calculate total bench area
+    local benchWidth = 3 * CARD_WIDTH + 2 * BENCH_SPACING
+    local benchX = positions[1].x - 10
+    local benchY = positions[1].y - 10
+    
     -- Draw bench zone outline
-    love.graphics.setColor(0.3, 0.5, 0.3, 0.3)
+    if playerIndex == self.game.currentPlayer then
+        love.graphics.setColor(0.3, 0.5, 0.3, 0.15 + 0.05 * math.sin(love.timer.getTime() * 2))
+    else
+        love.graphics.setColor(0.3, 0.5, 0.3, 0.15)
+    end
+    
+    -- Draw bench area background
     love.graphics.rectangle("fill", 
-        positions[1].x - 10, 
-        positions[1].y - 10, 
-        3 * CARD_WIDTH + 2 * CARD_SPACING + 20, 
+        benchX, 
+        benchY, 
+        benchWidth + 20, 
         CARD_HEIGHT + 20, 
-        5, 5)
+        8, 8)
+    
+    -- Draw bench border
+    love.graphics.setColor(0.3, 0.6, 0.3, 0.4)
+    love.graphics.setLineWidth(2)
+    love.graphics.rectangle("line", 
+        benchX, 
+        benchY, 
+        benchWidth + 20, 
+        CARD_HEIGHT + 20, 
+        8, 8)
     
     -- Draw bench label
-    love.graphics.setColor(1, 1, 1, 0.7)
+    love.graphics.setColor(1, 1, 1, 0.8)
     love.graphics.setFont(self.fonts.small)
-    love.graphics.print("BENCH", positions[1].x, positions[1].y - 30)
+    
+    if playerIndex == 1 then
+        love.graphics.print("BENCH", positions[1].x, positions[1].y - 25)
+    else
+        love.graphics.print("BENCH", positions[1].x, positions[1].y + CARD_HEIGHT + 10)
+    end
     
     -- Draw each bench slot
     for i = 1, 3 do
         local pos = positions[i]
         
-        -- Draw bench slot outline
-        love.graphics.setColor(0.3, 0.3, 0.3, 0.3)
+        -- Draw individual bench slot outline
+        love.graphics.setColor(0.3, 0.3, 0.3, 0.2)
         self:drawRoundedRectangle(pos.x, pos.y, CARD_WIDTH, CARD_HEIGHT, CARD_CORNER_RADIUS)
         
         -- Draw card if there is one in this slot
@@ -1336,7 +1403,7 @@ function UI:drawPlayerBench(playerIndex)
             
             -- Display 'fusable' status if relevant
             if playerIndex == 1 and card.fusable then
-                love.graphics.setColor(0.8, 0.4, 0.9, 0.6)
+                love.graphics.setColor(0.8, 0.4, 0.9, 0.7)
                 love.graphics.circle("fill", pos.x + 15, pos.y + 15, 10)
                 
                 love.graphics.setColor(1, 1, 1)
@@ -2060,11 +2127,11 @@ function UI:playSelectedCard(cardIndex)
         local fieldWidth = (fieldCount + 1) * (CARD_WIDTH + CARD_SPACING) - CARD_SPACING
         local startX = (love.graphics.getWidth() - fieldWidth) / 2
         targetX = startX + fieldCount * (CARD_WIDTH + CARD_SPACING)
-        targetY = FIELD_Y_OFFSET + 120
+        targetY = PLAYER1_FIELD_Y + 120
     else
         -- First card on field
         targetX = love.graphics.getWidth()/2 - CARD_WIDTH/2
-        targetY = FIELD_Y_OFFSET + 120
+        targetY = PLAYER1_FIELD_Y + 120
     end
     
     -- Add animation
@@ -2181,11 +2248,10 @@ function UI:updateDragAndDropState()
     -- Check for valid drop targets
     if self.dragging.sourceType == "hand" then
         local card = self.dragging.card
-        local essenceCost = card.essenceCost or card.essence or card.cost or 0
         
         -- First check if the card is being dragged onto another card for fusion
         local targetFieldIndex = self:getClickedFieldCardIndex(mouseX, mouseY, 1)
-        if targetFieldIndex and self.game.players[1].essence >= 2 then
+        if targetFieldIndex then
             -- Check if fusion is possible
             local fieldCard = self.game.players[1].field[targetFieldIndex]
             if fieldCard and fieldCard.type == "character" and card.type == "character" then
@@ -2224,7 +2290,7 @@ function UI:updateDragAndDropState()
         end
         
         -- Special case for item cards
-        if card.type == "item" and targetFieldIndex and self.game.players[1].essence >= essenceCost then
+        if card.type == "item" and targetFieldIndex then
             local fieldCard = self.game.players[1].field[targetFieldIndex]
             if fieldCard and fieldCard.type == "character" then
                 -- This is a valid item target
@@ -2238,7 +2304,7 @@ function UI:updateDragAndDropState()
         end
         
         -- Special case for action cards
-        if card.type == "action" and self.game.players[1].essence >= essenceCost then
+        if card.type == "action" then
             -- Action cards can target either player's field
             local p1TargetIndex = self:getClickedFieldCardIndex(mouseX, mouseY, 1)
             local p2TargetIndex = self:getClickedFieldCardIndex(mouseX, mouseY, 2)
@@ -2263,53 +2329,49 @@ function UI:updateDragAndDropState()
         end
         
         -- If not fusion or item/action, check if over field or bench
-        if self.game.players[1].essence >= essenceCost then
-            -- Check if mouse is over the player's field area
-            local fieldPos = self.player1FieldPosition
-            if mouseX >= fieldPos.x and mouseX <= fieldPos.x + CARD_WIDTH and
-               mouseY >= fieldPos.y and mouseY <= fieldPos.y + CARD_HEIGHT and
-               (not self.game.players[1].field[1] or card.type ~= "character") then
+        -- Check if mouse is over the player's field area
+        local fieldPos = self.player1FieldPosition
+        if mouseX >= fieldPos.x and mouseX <= fieldPos.x + CARD_WIDTH and
+           mouseY >= fieldPos.y and mouseY <= fieldPos.y + CARD_HEIGHT and
+           (not self.game.players[1].field[1] or card.type ~= "character") then
+            
+            self.dragging.validDropTarget = "field"
+            
+            if card.type == "character" then
+                self.instructionMessage = "Release to play " .. card.name .. " to the field"
+            else
+                self.instructionMessage = "Release to play " .. card.name
+            end
+            
+            -- Add visual effect to show field placement
+            love.graphics.setColor(0.3, 0.9, 0.3, 0.5 + 0.2 * math.sin(love.timer.getTime() * 5))
+            love.graphics.circle("fill", mouseX, mouseY, 10)
+            return
+        end
+        
+        -- Check if mouse is over the player's bench area
+        for i = 1, 3 do
+            local benchPos = self.player1BenchPositions[i]
+            if mouseX >= benchPos.x and mouseX <= benchPos.x + CARD_WIDTH and
+               mouseY >= benchPos.y and mouseY <= benchPos.y + CARD_HEIGHT and
+               card.type == "character" and
+               (#self.game.players[1].bench < 3 or i <= #self.game.players[1].bench) then
                 
-                self.dragging.validDropTarget = "field"
+                self.dragging.validDropTarget = "bench"
+                self.instructionMessage = "Release to play " .. card.name .. " to the bench"
                 
-                if card.type == "character" then
-                    self.instructionMessage = "Release to play " .. card.name .. " to the field"
-                else
-                    self.instructionMessage = "Release to play " .. card.name
-                end
-                
-                -- Add visual effect to show field placement
+                -- Add visual effect to show bench placement
                 love.graphics.setColor(0.3, 0.9, 0.3, 0.5 + 0.2 * math.sin(love.timer.getTime() * 5))
                 love.graphics.circle("fill", mouseX, mouseY, 10)
                 return
             end
-            
-            -- Check if mouse is over the player's bench area
-            for i = 1, 3 do
-                local benchPos = self.player1BenchPositions[i]
-                if mouseX >= benchPos.x and mouseX <= benchPos.x + CARD_WIDTH and
-                   mouseY >= benchPos.y and mouseY <= benchPos.y + CARD_HEIGHT and
-                   card.type == "character" and
-                   (#self.game.players[1].bench < 3 or i <= #self.game.players[1].bench) then
-                    
-                    self.dragging.validDropTarget = "bench"
-                    self.instructionMessage = "Release to play " .. card.name .. " to the bench"
-                    
-                    -- Add visual effect to show bench placement
-                    love.graphics.setColor(0.3, 0.9, 0.3, 0.5 + 0.2 * math.sin(love.timer.getTime() * 5))
-                    love.graphics.circle("fill", mouseX, mouseY, 10)
-                    return
-                end
-            end
-            
-            -- Not over any valid targets
-            if card.type == "character" then
-                self.instructionMessage = "Drag to your field or bench to play character"
-            else
-                self.instructionMessage = "Drag to a valid target"
-            end
+        end
+        
+        -- Not over any valid targets
+        if card.type == "character" then
+            self.instructionMessage = "Drag to your field or bench to play character"
         else
-            self.instructionMessage = "Need " .. essenceCost .. " essence to play (you have " .. self.game.players[1].essence .. ")"
+            self.instructionMessage = "Drag to a valid target"
         end
     elseif self.dragging.sourceType == "field" then
         -- For cards on field, valid targets are opponent's cards
@@ -3271,6 +3333,79 @@ function UI:drawFourthWallMessage()
     love.graphics.setColor(0.8, 0.3, 0.3)
     love.graphics.setFont(self.fonts.small)
     love.graphics.print(self.fourthWallMessage, 20, 20)
+end
+
+function UI:dropCard(card, player, targetX, targetY)
+    local cardPlayValid = false
+    local targetFieldIndex = nil
+    local targetBenchIndex = nil
+    local isPlayer1 = player.id == 1
+    local playerPos = isPlayer1 and self.player1Positions or self.player2Positions
+    
+    -- Check if dropped on field position
+    if self:isMouseOverRect(targetX, targetY, playerPos.fieldPosition.x, playerPos.fieldPosition.y, CARD_WIDTH, CARD_HEIGHT) then
+        targetFieldIndex = isPlayer1 and 1 or 1
+        if card.type == "character" then
+            cardPlayValid = true
+        end
+    -- Check if dropped on bench positions
+    else
+        for i = 1, 3 do
+            if self:isMouseOverRect(targetX, targetY, playerPos.benchPositions[i].x, playerPos.benchPositions[i].y, CARD_WIDTH, CARD_HEIGHT) then
+                targetBenchIndex = i
+                if card.type == "character" then
+                    cardPlayValid = true
+                end
+                break
+            end
+        end
+    end
+    
+    -- Check if character is being targeted with an item or action
+    if not cardPlayValid and (card.type == "item" or card.type == "action") then
+        local targetPlayer = player
+        local targetPlayerPos = playerPos
+        
+        -- Check if targeting a field character
+        if self:isMouseOverRect(targetX, targetY, targetPlayerPos.fieldPosition.x, targetPlayerPos.fieldPosition.y, CARD_WIDTH, CARD_HEIGHT) and targetPlayer.field[1] then
+            targetFieldIndex = 1
+            cardPlayValid = true
+        end
+        
+        -- Check if targeting a bench character
+        if not cardPlayValid then
+            for i = 1, 3 do
+                if self:isMouseOverRect(targetX, targetY, targetPlayerPos.benchPositions[i].x, targetPlayerPos.benchPositions[i].y, CARD_WIDTH, CARD_HEIGHT) and targetPlayer.bench[i] then
+                    targetBenchIndex = i
+                    cardPlayValid = true
+                    break
+                end
+            end
+        end
+    end
+    
+    -- Apply the card if valid
+    if cardPlayValid then
+        if card.type == "character" then
+            if targetFieldIndex then
+                self.game:playCard(player, card, "field", targetFieldIndex)
+            elseif targetBenchIndex then
+                self.game:playCard(player, card, "bench", targetBenchIndex)
+            end
+        elseif card.type == "item" and targetFieldIndex then
+            self.game:playCard(player, card, "item", targetFieldIndex)
+        elseif card.type == "action" then
+            self.game:playCard(player, card, "action")
+        end
+        
+        -- Reset drag state
+        self.draggedCard = nil
+        self.isDragging = false
+        return true
+    end
+    
+    self.instructionMessage = "Invalid target for this card"
+    return false
 end
 
 return UI 
